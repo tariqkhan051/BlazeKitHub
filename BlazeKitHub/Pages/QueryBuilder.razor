@@ -33,8 +33,8 @@
                 <label for="Platform">Platform*</label>
                 <select id="Platform" required class="form-control form-select" name="Type" @bind="module.Platform">
                     <option value="Select">-Select-</option>
-                    <option value="shipstation">Shipstation</option>
-                    <option value="shipengine">Shipengine</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
                 </select>
             </div>
             <div class="form-group col-md-2">
@@ -103,7 +103,7 @@
                 string carrier = uniqueName + $"_sourceCategory=\"{sourceCategory}\"{Environment.NewLine}" +
                                     $"| json field = _raw \"log.level\" | where %\"log.level\" = \"debug\" {Environment.NewLine} | json field = _raw \"log.message\" | where %\"log.message\" = \"Outbound HTTP Request&Response\"";
 
-                module.Result += "=ShipEngine=" + Environment.NewLine;
+                module.Result += "=1=" + Environment.NewLine;
                 module.Result += ship + Environment.NewLine + Environment.NewLine;
                 module.Result += "=Carrier=" + Environment.NewLine;
                 module.Result += carrier + Environment.NewLine;
@@ -112,7 +112,7 @@
             {
                 string ship = uniqueName + $"_sourceCategory=\"{sourceCategory}\"";
 
-                module.Result += "=ShipEngine=" + Environment.NewLine;
+                module.Result += "=1=" + Environment.NewLine;
                 module.Result += ship + Environment.NewLine + Environment.NewLine;
             }
 

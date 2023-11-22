@@ -11,7 +11,7 @@ This project will help in generating samples from Postman. Each sample folder wi
 ## Changes when deploying module 
 
 1. Update the logger file on deployment. You can check sample logger files on the following path:
-`H:\Documents\ShipEngine\SamplesGenerator\DEV`
+`H:\Documents\path\SamplesGenerator\DEV`
 
 2. Replace {TEAM_NAME} with your team's folder name on BARI-001.
 
