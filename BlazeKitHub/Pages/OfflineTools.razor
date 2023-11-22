@@ -1,0 +1,65 @@
+﻿@page "/offline-tools"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
+
+<PageTitle>Offline Tools</PageTitle>
+
+<TabControl>
+    @if (tools != null)
+    {
+        @foreach (var tool in tools)
+        {
+            <TabPage Text=@tool.title>
+                <DownloadTool DownloadUrl=@tool.downloadUrl LastUpdateUrl=@tool.lastUpdatedUrl ToolName=@tool.title>
+                    <ChildContent>
+                        <h3>@tool.title</h3>
+                        <p>
+                            @tool.description
+                        </p>
+                        @if (!string.IsNullOrWhiteSpace(@tool?.howTo))
+                        {
+                            <h5>How to use</h5>
+                            <ul>
+                                @foreach (var str in @tool?.howTo?.Split("<br>"))
+                                {
+                                    @if (!string.IsNullOrWhiteSpace(str))
+                                    {
+                                        <li> @str </li>
+                                    }
+                                }
+                            </ul>
+                        }
+                    </ChildContent>
+                </DownloadTool>
+            </TabPage>
+        }
+    }
+</TabControl>
+
+@code {
+    private string? BASE_URL;
+    private ToolDetail[]? tools;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+            tools = await Http.GetFromJsonAsync<ToolDetail[]>(BASE_URL + "/tool/details");
+        }
+        catch (Exception e)
+        {
+            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+        }
+    }
+
+    public class ToolDetail
+    {
+        public string? title { get; set; }
+        public string? description { get; set; }
+        public string? howTo { get; set; }
+        public string? lastUpdatedUrl { get; set; }
+        public string? downloadUrl { get; set; }
+    }
+}

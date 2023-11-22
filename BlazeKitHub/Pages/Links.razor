@@ -1,0 +1,132 @@
+﻿@page "/links"
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject IConfiguration Configuration
+@using BlazeKitHub.Helpers
+
+<h3>Useful Links</h3>
+
+<div class="form-row">
+    <div class="form-group col-md-6">
+        <button type="button" class="btn btn-primary" @onclick="@(() => ShowAddLinkModal())">Add New</button>
+    </div>
+</div>
+
+@if (linkInfo == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="modal-body">
+        <table class="table" id="deploymentTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var link in linkInfo)
+                {
+                    <tr>
+                        <td><a href="@link.Url" target="_blank">@link.Name</a></td>
+                        <td>@link.Details</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+@code {
+    private LinkInfo[]? linkInfo;
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+    string BASE_URL;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+            await GetUsefulLinks();
+            await JS.InvokeVoidAsync("dataTable", "deploymentTable");
+        }
+        catch (Exception e)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Request failed", e.Message);
+        }
+    }
+
+    private async Task GetUsefulLinks()
+    {
+        linkInfo = await Http.GetFromJsonAsync<LinkInfo[]>(BASE_URL + "/useful-links");
+    }
+
+    private async Task ShowAddLinkModal()
+    {
+        var credentialsModal = Modal.Show<AddLinkModal>
+            ("Add Link", new ModalOptions()
+                {
+                    HideCloseButton = false,
+                    HideHeader = false,
+                    DisableBackgroundCancel = true,
+                    ActivateFocusTrap = false
+                });
+
+        var result = await credentialsModal.Result;
+
+        try
+        {
+            var newCredential = new LinkInfo();
+            dynamic _modalData = result?.Data;
+
+            if (_modalData != null)
+            {
+                newCredential.Name = _modalData.Name;
+                newCredential.Url = _modalData.Url;
+                newCredential.Details = _modalData.Description;
+
+                if (result != null && result.Confirmed)
+                {
+                    AddLink(newCredential);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Error!", ex.Message);
+        }
+        finally
+        {
+            credentialsModal.Close();
+        }
+    }
+
+    private async void AddLink(LinkInfo linkData)
+    {
+        var endpoint = BASE_URL + "/useful-links";
+
+        try
+        {
+            var client = new HttpClient();
+            var response = await client.PostAsJsonAsync(endpoint, linkData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("successMessageModal", "Link added!");
+                await JS.InvokeVoidAsync("destroyDataTable");
+                await GetUsefulLinks();
+                StateHasChanged();
+                await JS.InvokeVoidAsync("dataTable");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Error!", "Unable to add link.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unable to add link.", ex.Message);
+        }
+    }
+}

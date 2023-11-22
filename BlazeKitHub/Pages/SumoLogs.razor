@@ -1,0 +1,703 @@
+﻿@page "/sumo-logs"
+@using System.Text
+@using System.Text.RegularExpressions
+@using System.Globalization
+@using Newtonsoft.Json
+@using Newtonsoft.Json.Linq
+@using System.Reflection
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inherits Helpers.CheckBoxListBase
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+
+
+<PageTitle>Sumo Logs</PageTitle>
+
+<div class="modal-body">
+    <div id="cover-spin" style="display:none"></div>
+    <form method="dialog">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="row">
+                    <div class="form-group col-md-6">
+                        <label for="Name">Module Name</label>
+                        <input type="text" class="form-control" @bind="selectedOption" @oninput="HandleInput" />
+
+                        <ul class="list-group" style="display: @(showOptions ? "block" : "none"); position: absolute;z-index: 9999;max-height: 200px;overflow-y: auto; ">
+                            @foreach (var option in filteredOptions)
+                            {
+                                <li class="list-group-item" style="background-color: white;" onmouseover="this.style.backgroundColor='grey';" onmouseout="this.style.backgroundColor='white';" @onclick="() => SelectOption(option)">@option</li>
+                            }
+                        </ul>
+
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Environment">Environment*</label>
+                        <select id="Environment" class="form-control form-select" name="Type" @bind="module.Environment">
+                            <option value="Select">-Select-</option>
+                            <option value="dev">Dev</option>
+                            <option value="stage">Staging</option>
+                            <option value="prod">Production</option>
+                        </select>
+                    </div>
+
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-12">
+                        <label for="Name">Search Term</label>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top:2px" @onclick="@(()=>AddToList(addedScenarios, module?.UniqueName ?? string.Empty))"><i class="bi bi-plus"></i></button>
+                        <input type="text" class="form-control" placeholder="18646" @bind:event="oninput" @bind="module.UniqueName" />
+                    </div>
+
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-6">
+                        <label for="Platform">Resource</label>
+                        <select id="Platform" class="form-control form-select" name="Type" @bind="module.Resource">
+                            <option value="Select">-Select-</option>
+                            <option value="Register">Register</option>
+                            <option value="CreateLabel">CreateLabel</option>
+                            <option value="SchedulePickup">SchedulePickup</option>
+                            <option value="CancelPickup">CancelPickup</option>
+                            <option value="GetRates">GetRates</option>
+                            <option value="GetRelayPoints">GetRelayPoints</option>
+                            <option value="GetRelayPoint">GetRelayPoint</option>
+                            <option value="VoidLabels">VoidLabels</option>
+                            <option value="Track">Track</option>
+                            <option value="CreateManifest">CreateManifest</option>
+                            <option value="GetManifest">GetManifest</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Platform">Case</label>
+                        <select id="Platform" class="form-control form-select" name="Case" @bind="module.Case">
+                            <option value="Select">-Select-</option>
+                            <option value="success">Success</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-6">
+                        <label for="From">From</label>
+                        <input type="datetime-local" class="form-control" @bind="module.FromDate" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="To">To</label>
+                        <input type="datetime-local" class="form-control" @bind="module.ToDate" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-success" @onclick="ShowAuthenticationModel">Get Logs</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row">
+                    <label for="Name">Query</label>
+                    <textarea class="form-control" style="height:120px; resize: none; font-size: 12px;" readonly @bind="module.Result"> </textarea>
+                </div>
+
+                <div class="row">
+                    <label for="SearchTerm">Search Term(s) added</label>
+                    <div style="height:250px; overflow-y: scroll; overflow-x:scroll;">
+                        <ul>
+                            @foreach (var value in addedScenarios.ToArray())
+                            {
+                                <li style="list-style:none"><button class="btn btn-outline-danger btn-sm mr-1" style="border:none" @onclick="@(()=>RemoveFromList(addedScenarios, value))"><i class="bi bi-trash3"></i></button> @value</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    <div class="form-row">
+        <div class="form-group col-md-12">
+            <table id="logsTable" class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Info</th>
+                        <th style="width: 70%;">Logs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (@logsResults.Count == 0)
+                    {
+                        <p>No records found...</p>
+                    }
+                    @foreach (var (log, index) in logsResults.Select((log, index) => (log, index)))
+                    {
+                        <tr>
+                            <td>@(index + 1)</td>
+                            <td>
+                                <span>@log.DateTime</span>
+                                @*<span>@(log.Enviornment ?? "")</span> <!-- add null coalescing operator to provide default value -->*@
+                            </td>
+                            <td style="max-height: 50px; overflow: auto; position: relative;">
+                                @if (log.Message is not null)
+                                {
+                                    <pre class="jsonview">
+                                    <span title="@log.Message.ToString()" data-toggle="modal" data-target="#parsedMapModal@(index)">
+                                            @log.Message.ToString().Substring(0, Math.Min(50, @log.Message.ToString().Length))<i class="bi bi-arrows-collapse"></i>
+                                                            </span>
+                                                            </pre>
+                                    <button class="btn btn-sm btn-outline-secondary" id="copy-to-clipboard" onclick="@(() => CopyToClipboard(log.Message.ToString()))" style="position: absolute; top: 0; right: 0;">
+                                        <span class="bi bi-clipboard-check" aria-hidden="true"></span> Copy to Clipboard
+                                    </button>
+                                    <div class="modal fade" id="parsedMapModal@(index)" tabindex="-1" role="dialog" aria-labelledby="parsedMapModalLabel@(index)" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="parsedMapModalLabel@(index)">Logs</h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body" style="height: 600px;overflow-y: scroll;">
+                                                    <pre id="json-container" class="json-prettyprint" onchange="renderJSON(@log.Message)">@log.Message</pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <pre class="jsonview">No ParsedMap available</pre>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal" tabindex="-1" role="dialog" style="display: @((showAuthenticationModel) ? "block" : "none")">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Authentication</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="HideAuthenticationModel">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="idInput">UserName:</label>
+                        <input type="text" class="form-control" id="idInput" @bind="id">
+                    </div>
+                    <div class="form-group">
+                        <label for="passInput">Password:</label>
+                        <input type="password" class="form-control" id="passInput" @bind="pass">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="HideAuthenticationModel">Close</button>
+                <button type="button" class="btn btn-primary" @onclick="Authenticate">Authenticate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ModuleDetail module = new();
+    List<LogsResult> logsResults = new();
+    private List<string> addedScenarios = new();
+    static bool? IsDisabled { get; set; } = true;
+    private bool showAuthenticationModel;
+    private string endpoint = string.Empty;
+    private string scenario = string.Empty;
+    private string id;
+    private string pass;
+
+    private string selectedOption;
+    private List<string> options;
+    private List<string> filteredOptions;
+    private bool showOptions;
+
+    protected override void OnInitialized()
+    {
+        options = new List<string>()
+        {
+    "airtranss","amazon-buy-shipping","amazon-shipping-v2","amazon-shipping","angel-last-mile","another-module","anpost","apc-overnight","apc","apg-ecommerce","aramex","asendia-shipping-manifest-to-asendia","asendia","australia-post-mypost-business",
+    "australia-post-v2","axlehire","b2c-europe","better-trucks","boxberry","brt-it","canada-post","canadapost","canpar","carrier-oauth-demo","cdl-us","chronopost-v2","chronopost","colis-prive-store","colis-prive","colissimo","correos-spain",
+    "couriersplease","dai","delivengo","demo-carrier","demo-vice","deutsche-post-cross-border","deutsche-post-dhl","dhl-ecommerce-asia","dhl-ecommerce-au-v2","dhl-ecommerce-au","dhl-ecommerce-v4","dhl-parcel-uk","dhlecommerce","dhlexpress",
+    "direct-freight","direct-link","doordash","dpd-france","dpd-germany","dpd-hungary","dpd-romania","dpd-ireland","dpd-local","dpd-nl","dpd-portugal","dpd","dropoff","dummy-module","dx","ecms","envialia","epg","estafeta-mexico","estafeta","fairsenden",
+    "fan","fastway","fedex-mailview","fedex","ferrari","flashbox","freightways","geis-cz","global-e","globalaccess","globalpost","glocally","gls-ca","gls-france","gls-germany","gls-nl","gls-us","gophr","grupo-ampm","hermes-de","hermes",
+    "iabol","indyship","inpost-it","inpost","intelcom-ca","intelliquick","international-bridge","interpost","intersoft-royalmail","la-poste-chronopost","lasership","lettre-suivie","linex","loomis-express","lso","maersk-b2c","meest",
+    "mercado-libre-shipping","metroland","mng-kargo","mondial-relay-dc","mondial-relay","n9minutos","nationex","nb-post","nedpak","nightline","nippon-express","newgistics","new-zealand-post","nexive",
+    "nimbus-post","ni-post","ontime","ontrac","open-de","ott","packlink","palletways-de","palletways-uk",    "parcel-force",    "parcel2go",    "parcelled-in",    "parcelforce",    "parcelforce-rmg",    "pass-my-parcel",    "pca",    "pcg",    "peerpost",    "pfcexpress",    "pickupp",    "poczta-polska-pl",
+    "poczta-polska",    "posta-romana",    "postdanmark",    "poste-italiane",    "posten-norge",    "postnl",    "postnord",    "postnord-sweden",    "purolator-ca",    "q-logistics",    "quantium",    "qwintry",    "ram",    "ramgroup-italy",
+    "rcloud",    "roadie",    "russian-post",    "send24",    "sendcloud-own",    "sendcloud",    "sendex",    "sf-express",    "shippify",    "shippo",    "shipping-au",    "shipping-de",    "shipping-lv",    "shipping-merge",    "shipping-nl",
+    "shipping-pl",    "shipping",    "shiprocket",    "shipup",    "shoplogistics",    "sioli",    "skynetworldwide",    "smartmile",    "smsa-express",    "sovos",    "speedee",    "star-track-courier",    "star-track",    "stuart",    "t-force",
+    "t-cat",    "taiyou",    "tnt-france",    "tnt",    "topshipping",    "torque",    "tpk-logistics",    "tuffnells",    "uab-paslauga",    "ukrposhta",    "ups-freight",    "ups-mi",    "ups",    "usps",    "vamaship",    "vesuvio",    "viettel-post",
+    "viptela",    "vp-ship",    "wedelivertheworld",    "wefast",    "whistl",    "wn-direct",    "wpd","xdp-uk","xdp","xend",    "xparcel","yamato-jp","yamato-transport","yanwen","yodel","zigzag"
+};
+        filteredOptions = options;
+    }
+
+    private void HandleInput(ChangeEventArgs e)
+    {
+        var searchText = e.Value.ToString();
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            filteredOptions = options;
+            showOptions = false;
+        }
+        else
+        {
+            filteredOptions = options.Where(o => o.Contains(searchText)).ToList();
+            showOptions = true;
+        }
+    }
+
+    private void SelectOption(string option)
+    {
+        selectedOption = option;
+        module.Name = selectedOption;
+        showOptions = false;
+    }
+
+
+    private async Task ShowAuthenticationModel()
+    {
+        //if( EnsureRequiredFieldsAreFilledOut())
+        //{
+        await GenerateQueryForView();
+        showAuthenticationModel = true;
+        //  }
+    }
+
+    private void HideAuthenticationModel()
+    {
+        showAuthenticationModel = false;
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        await JSRuntime.InvokeVoidAsync("copyClipboard", text);
+    }
+
+    private async Task Authenticate()
+    {
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(pass))
+        {
+            await JS.InvokeVoidAsync("errorModal", "Require Credentials.");
+            return;
+        }
+
+        List<TeamData> teamData = JsonConvert.DeserializeObject<List<TeamData>>(json);
+        User team = teamData.FirstOrDefault(t => t.team == id).user;
+
+        if (id == team.username && pass == team.password)
+        {
+            HideAuthenticationModel();
+            await JS.InvokeVoidAsync("showLoader");
+            List<string> Quries = GenerateQuery();
+            if (Quries.Count > 1)
+            {
+                await GetResults(Quries[0], Quries[1], id);
+            }
+            else
+            {
+                await GetResults(Quries[0], "", id);
+            }
+            await JS.InvokeVoidAsync("hideLoader");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("errorModal", "Invalid Credentials.");
+        }
+    }
+
+    private async void AddToList(List<string> list, string val)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(val) && !list.Contains(val))
+            {
+                list.Add(val);
+                if (scenario.Equals(val))
+                {
+                    scenario = string.Empty;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected error", ex.Message);
+        }
+    }
+
+    private async void RemoveFromList(List<string> list, string val)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(val) && list.Contains(val))
+            {
+                list.Remove(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected error", ex.Message);
+        }
+    }
+
+    private async Task GetResults(string shipQuery, string carrierQuery, string teamName)
+    {
+        try
+        {
+            DateTime fromDate = module.FromDate;
+            DateTime toDate = module.ToDate;
+            EnsureValidDateRange(fromDate, toDate);
+            string fromDateString = fromDate.AddHours(-5).ToString("yyyy-MM-ddTHH:mm:ss");
+            string toDateString = toDate.AddHours(-5).ToString("yyyy-MM-ddTHH:mm:ss");
+            var shipResults = await SearchSumoLogs(fromDateString, toDateString, shipQuery, teamName);
+            logsResults = shipResults;
+            if (!string.IsNullOrWhiteSpace(module.Resource) && module.Resource != "Select")
+            {
+                var carrierResults = await SearchSumoLogs(fromDateString, toDateString, carrierQuery, teamName);
+                logsResults = shipResults.Concat(carrierResults).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorModal("Error Occurred", ex.Message);
+        }
+    }
+
+    private List<string> GenerateQuery()
+    {
+
+        List<string> quries = new List<string>();
+        string uniqueName = GetUniqueNameClause();
+        string sourceCategory = GetSourceCategoryClause();
+        string logMessage = GetLogMessageClause();
+
+        string shipQuery = GetShipQuery(uniqueName, sourceCategory, logMessage);
+        quries.Add(shipQuery);
+        if (!string.IsNullOrWhiteSpace(module.Resource) && module.Resource != "Select")
+        {
+            string carrierQuery = GetCarrierQuery(uniqueName, sourceCategory);
+            quries.Add(carrierQuery);
+        }
+        return quries;
+    }
+
+    private bool EnsureRequiredFieldsAreFilledOut()
+    {
+        if (string.IsNullOrWhiteSpace(module.Name) ||
+            string.IsNullOrWhiteSpace(module.Environment) ||
+            module?.Environment == "Select")
+        {
+            JS.InvokeVoidAsync("errorModal", "Please fill out required fields.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(module.Platform) ||
+            module?.Platform == "Select")
+        {
+            JS.InvokeVoidAsync("errorModal", "Please fill out required fields.");
+            return false;
+        }
+
+        return true;
+    }
+
+
+    private void EnsureValidDateRange(DateTime fromDate, DateTime toDate)
+    {
+        if (fromDate.Date > toDate.Date || (fromDate.Date == toDate.Date && fromDate.TimeOfDay > toDate.TimeOfDay))
+        {
+            throw new ArgumentException("Invalid date range: From date must be earlier than or equal to To date.");
+        }
+    }
+
+    private string GetUniqueNameClause()
+    {
+        string result = "";
+        if (addedScenarios.Count > 1)
+        {
+            foreach (var searchTerm in addedScenarios)
+            {
+                result += $"(\\\"{searchTerm}\\\") AND ";
+            }
+            result = result.TrimEnd(' ', 'A', 'N', 'D');
+        }
+        else if (addedScenarios.Count == 1)
+        {
+            result = $"(\\\"{addedScenarios[0]}\\\")";
+        }
+        else
+        {
+            result = $"(\\\"{module.UniqueName}\\\")";
+        }
+        return result;
+    }
+
+    private string GetSourceCategoryClause()
+    {
+        if (!string.IsNullOrWhiteSpace(selectedOption) && !string.IsNullOrWhiteSpace(module.Environment))
+        {
+            return $"kubernetes/shipping/{ConvertSpacesAndUnderscores(selectedOption)}/{module.Environment}/{ConvertSpacesAndUnderscores(selectedOption)}/{module.Environment}/deploy\\\"";
+        }
+
+        return string.Empty;
+    }
+
+    private string GetLogMessageClause()
+    {
+        return $"{module.Resource}";
+    }
+
+    private string GetShipQuery(string uniqueName, string sourceCategory, string logMessage)
+    {
+        string query = "";
+        string pattern = "[a-zA-Z0-9]";
+        bool isSearchTerm = Regex.IsMatch(uniqueName, pattern);
+        if (isSearchTerm)
+        {
+            query = uniqueName;
+        }
+
+        string code = module.Case != null && module.Case.Equals("success") ? " returned 200" : "";
+
+        if (!string.IsNullOrEmpty(sourceCategory))
+        {
+            if (isSearchTerm)
+            {
+                query += " AND ";
+            }
+            query += $" _sourceCategory=\\\"{sourceCategory}";
+        }
+
+        if (!string.IsNullOrEmpty(logMessage))
+        {
+            if (!string.IsNullOrEmpty(query))
+            {
+                query += "| ";
+            }
+
+            query += $"json field=_raw \\\"log.message\\\" | where %\\\"log.message\\\" contains \\\"HTTP POST /{logMessage}{code}\\\"";
+        }
+
+        return query;
+    }
+
+    private string GetCarrierQuery(string uniqueName, string sourceCategory)
+    {
+        string query = "";
+        string pattern = "[a-zA-Z0-9]";
+        bool isSearchTerm = Regex.IsMatch(uniqueName, pattern);
+        if (isSearchTerm)
+        {
+            query = uniqueName;
+        }
+
+        if (!string.IsNullOrEmpty(sourceCategory))
+        {
+            if (isSearchTerm)
+            {
+                query += " AND ";
+            }
+            query += $"_sourceCategory=\\\"{sourceCategory} |";
+        }
+
+        query += $" json field = _raw \\\"log.level\\\" | where %\\\"log.level\\\" = \\\"debug\\\" | json field = _raw \\\"log.message\\\" | where %\\\"log.message\\\" = \\\"Outbound HTTP Request&Response\\\"";
+
+        return query;
+    }
+
+    private async Task ShowErrorModal(string title, string message)
+    {
+        await JS.InvokeVoidAsync("errorModal", title, message);
+    }
+
+    public async Task<List<LogsResult>> SearchSumoLogs(string from, string to, string query, string team)
+    {
+        string? BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+        string endpointUrl = BASE_URL + "/sumoLogs/search";
+        //string endpointUrl = "http://localhost:5469/internal-se/sumoLogs/search";
+        string requestBody = $@"{{
+            ""from"" : ""{from}"",
+            ""to"" : ""{to}"",
+            ""query"" : ""{query}"",
+            ""team"" : ""{team}""
+        }}";
+
+        using var client = new HttpClient();
+
+        var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Post,
+                RequestUri = new Uri(endpointUrl),
+                Content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json")
+            };
+
+        using var response = await client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+
+        string responseBody = await response.Content.ReadAsStringAsync();
+        JObject obj = JObject.Parse(responseBody);
+        JArray messages = (JArray)obj["messages"];
+
+        List<LogsResult> results = new List<LogsResult>();
+
+        foreach (JObject message in messages)
+        {
+            if (message != null)
+            {
+                string? messageText = string.Empty;
+                DateTime? datetime = new DateTime();
+                if (message["parsedMap"] is JObject && message["parsedMap"] != null)
+                {
+                    JObject parsedMap = (JObject)message["parsedMap"];
+                    messageText = Convert.ToString(parsedMap);
+                }
+                else
+                {
+                    messageText = Convert.ToString(message);
+                }
+
+                if (message["datetime"] != null)
+                {
+                    datetime = DateTime.ParseExact(message["datetime"].ToString(), "dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
+                }
+
+                LogsResult result = new LogsResult
+                    {
+                        Message = messageText,
+                        //ParsedMap = parsedMap,
+                        DateTime = datetime,
+                    };
+
+                results.Add(result);
+            }
+        }
+        return results;
+    }
+
+    static string ConvertToDesiredFormat(string input )
+    {
+        // Replace occurrences of "\\\"" with "\""
+        input = input.Replace("\\\\\"", "\"");
+
+        // Replace occurrences of "u" with "\\u"
+        input = input.Replace("u", "\\u");
+
+        return input;
+    }
+
+    private async Task GenerateQueryForView()
+    {
+        try
+        {
+            List<string> queries = GenerateQuery();
+            string queryResult = string.Join(Environment.NewLine, queries.Select(q => q.Replace("\\\"", "\"").Replace("\\", "")));
+            if (queryResult.Contains("u003e"))
+            {
+                queryResult = ConvertToDesiredFormat(queries[0]);
+            }
+            if (queries.Count > 1)
+            {
+                queryResult = "-ShipEngine-" + Environment.NewLine + queries[0].Replace("\\\"", "\"").Replace("\\", "") + Environment.NewLine + Environment.NewLine + Environment.NewLine;
+                queryResult += "-Carrier-" + Environment.NewLine + queries[1].Replace("\\\"", "\"").Replace("\\", "");
+            }
+            module.Result = queryResult;
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Error Occurred", ex.Message);
+        }
+    }
+
+
+
+    public string ConvertSpacesAndUnderscores(string input)
+    {
+        string pattern = @"[_\-\s]+";
+        string replacement = "/";
+        string output = Regex.Replace(input, pattern, replacement);
+        return output;
+    }
+
+    public class ModuleDetail
+    {
+        public string? Name { get; set; }
+        public string? UniqueName { get; set; }
+        public string? Environment { get; set; }
+        public string? Platform { get; set; }
+        public string? Resource { get; set; }
+        public string? Result { get; set; }
+        public string? Case { get; set; }
+        public DateTime FromDate { get; set; } = DateTime.Now.AddMinutes(-15);
+        public DateTime ToDate { get; set; } = DateTime.Now;
+    }
+
+    public class LogsResult
+    {
+        public string? Message { get; set; }
+        public string? Enviornment { get; set; }
+        //public JObject? ParsedMap { get; set; }
+        public DateTime? DateTime { get; set; }
+    }
+
+    class User
+    {
+        public string username { get; set; }
+        public string password { get; set; }
+    }
+
+    class TeamData
+    {
+        public string team { get; set; }
+        public User user { get; set; }
+    }
+
+    private string json = @"[
+        {
+            ""team"": ""mustangs"",
+            ""user"": {
+                ""username"": ""mustangs"",
+                ""password"": ""dev786""
+            }
+        },
+        {
+            ""team"": ""sherlock"",
+            ""user"": {
+                ""username"": ""sherlock"",
+                ""password"": ""dev144""
+            }
+        },
+        {
+            ""team"": ""cyborg"",
+            ""user"": {
+                ""username"": ""cyborg"",
+                ""password"": ""dev999""
+            }
+        },
+        {
+            ""team"": ""daredevil"",
+            ""user"": {
+                ""username"": ""daredevil"",
+                ""password"": ""dev921""
+            }
+        },
+        {
+            ""team"": ""falcons"",
+            ""user"": {
+                ""username"": ""falcons"",
+                ""password"": ""dev020""
+            }
+        }
+    ]";
+}

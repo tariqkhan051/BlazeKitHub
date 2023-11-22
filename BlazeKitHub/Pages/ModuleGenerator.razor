@@ -1,0 +1,249 @@
+﻿@page "/module-generator"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inherits Helpers.CheckBoxListBase
+@inject IConfiguration Configuration
+
+<PageTitle>Module Generator</PageTitle>
+
+<h3>Module Generator</h3>
+<i class="text-muted">Note: You can leave all the values empty and click "Generate" button to download a demo module.</i>
+<div class="modal-body">
+    <form method="dialog">
+
+        <Collapsible CollapsibleElementID="carrier-details" Title=" Carrier Details">
+            <ChildContent>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="Name">Carrier name</label>
+                        <input type="text" class="form-control" placeholder="Enter carrier name" @bind="module.Name" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="FolderName">Folder name</label>
+                        <input type="text" class="form-control" placeholder="Enter project folder name" @bind="module.FolderName" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="CarrierDescription">Carrier description</label>
+                    <input type="text" class="form-control" placeholder="Enter carrier description" @bind="module.CarrierDescription" />
+                </div>
+            </ChildContent>
+        </Collapsible>
+
+        <Collapsible CollapsibleElementID="urls" Title=" URLs">
+            <ChildContent>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="ClientWebSite">Carrier URL</label>
+                        <input type="text" class="form-control" placeholder="Enter carrier URL" @bind="module.ClientWebSite" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="TrackingUrl">Tracking URL</label>
+                        <input type="text" class="form-control" placeholder="Enter tracking URL" @bind="module.TrackingUrl" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ApiUrl">Base API URL</label>
+                    <input type="text" class="form-control" placeholder="Enter base API URL" @bind="module.ApiUrl" />
+                </div>
+            </ChildContent>
+        </Collapsible>
+
+        <Collapsible CollapsibleElementID="api-type" Title=" App and API Type">
+            <ChildContent>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="ApplicationType">App Type</label>
+                        <select id="ApplicationType" class="form-control form-select" name="ApplicationType" @bind="module.ApplicationType">
+                            <option selected value="Carrier App">Carrier App</option>
+                            @*<option value="Order App">Order App</option>*@
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ApiType">API Type</label>
+                        <select id="ApiType" class="form-control form-select" name="ApiType" @bind="module.ApiType">
+                            <option selected value="rest-client">JSON</option>
+                            <option value="soap-client">XML</option>
+                            <option value="form-url-encoded">Form URL Encoded</option>
+                        </select>
+                    </div>
+                </div>
+            </ChildContent>
+        </Collapsible>
+
+        <Collapsible CollapsibleElementID="services" Title=" Services">
+            <ChildContent>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <span align="right"><button type="button" class="btn btn-success btn-sm" @onclick="@(()=>AddToList(supportedServices,service))"><i class="bi bi-plus"></i></button></span>
+                        <label for="ServicesAnswers">Supported services</label>
+                        <input type="text" class="form-control" placeholder="Enter service name" @bind="service" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PackagingAnswers">Services added</label><i class="text-muted"> (click to remove)</i><br />
+                        @foreach (var service in supportedServices.ToArray())
+                        {
+                            <button class="btn btn-outline-dark" style="margin-right: 4px; margin-bottom:4px" @onclick="@(()=>RemoveFromList(supportedServices,@service))">@service</button>
+                        }
+                    </div>
+                </div>
+            </ChildContent>
+        </Collapsible>
+
+        <Collapsible CollapsibleElementID="packaging-types" Title=" Packaging Types">
+            <ChildContent>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <button type="button" class="btn btn-success btn-sm" @onclick="@(()=>AddToList(supportedPackagingTypes,package))"><i class="bi bi-plus"></i></button>
+                        <label for="PackagingAnswers">Supported packaging types</label>
+                        <input type="text" class="form-control" placeholder="Enter packaging type name" @bind="package" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ServicesAnswers">Packaging types added</label><i class="text-muted"> (click to remove)</i><br />
+                        @foreach (var pkg in supportedPackagingTypes.ToArray())
+                        {
+                            <button class="btn btn-outline-dark" style="margin-right: 4px; margin-bottom:4px" @onclick="@(()=>RemoveFromList(supportedPackagingTypes,@pkg))">@pkg</button>
+                        }
+                    </div>
+                </div>
+            </ChildContent>
+        </Collapsible>
+
+        <Collapsible CollapsibleElementID="methods" Title=" Methods">
+            <ChildContent>
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <label for="MethodsAnswers">Supported methods</label>
+                        <div class="col-12 row">
+                            <CheckBoxList Data="@MethodsList"
+                                          TextField="@((item)=>item.Value)"
+                                          ValueField="@((item)=>item.Name)"
+                                          SelectedValues="@SelectedIds" />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <input type="checkbox" class="form-check-inline" @bind="module.UseTryCatch" />
+                        <label for="UseTryCatch">Use try catch in request/response mapping</label>
+                    </div>
+                </div>
+            </ChildContent>
+        </Collapsible>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" @onclick="OnInitializedAsync">Clear All</button>
+            <button type="button" class="btn btn-success" @onclick="GetModule">Generate</button>
+        </div>
+    </form>
+</div>
+
+@code {
+    private List<string> supportedServices = new();
+    private List<string> supportedPackagingTypes = new();
+    private string? package, service, BASE_URL;
+    private ModuleDetail module = new();
+    private const string DEFAULT_FILE_NAME = "demo-module";
+
+    protected override async Task OnInitializedAsync()
+    {
+        supportedServices = new();
+        supportedPackagingTypes = new();
+        package = string.Empty;
+        service = string.Empty;
+        module = new();
+        SelectedIds = new();
+
+        BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+    }
+
+    private async Task GetModule()
+    {
+        try
+        {
+            module.Methods = SelectedIds.ToArray();
+            module.Services = String.Join(",", supportedServices);
+            module.Packaging = String.Join(",", supportedPackagingTypes);
+
+            var response = await Http.PostAsJsonAsync(BASE_URL + "/module-generator/create", module);
+
+            var data = await response.Content.ReadAsByteArrayAsync();
+            await DownloadFileFromStream(GetFileStream(data), string.IsNullOrEmpty(module.FolderName) ? DEFAULT_FILE_NAME : module.FolderName);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Module generation failed", ex.Message);
+        }
+    }
+
+    private async void AddToList(List<string> list, string value)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(value) && !list.Contains(value))
+            {
+                list.Add(value);
+                if (service.Equals(value))
+                {
+                    service = string.Empty;
+                }
+                else
+                {
+                    package = string.Empty;
+                }
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected Error", ex.Message);
+
+        }
+    }
+
+    private async void RemoveFromList(List<string> list, string value)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(value) && list.Contains(value))
+            {
+                list.Remove(value);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected Error", ex.Message);
+        }
+    }
+
+    private Stream GetFileStream(byte[] byteArray)
+    {
+        Stream stream = new MemoryStream(byteArray);
+
+        return stream;
+    }
+
+    private async Task DownloadFileFromStream(Stream fileStream, string fileName)
+    {
+        using var streamRef = new DotNetStreamReference(stream: fileStream);
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName + ".zip", streamRef);
+    }
+
+    public class ModuleDetail
+    {
+        public string? ApplicationType { get; set; }
+        public string? FolderName { get; set; }
+        public string? Name { get; set; }
+        public string? CarrierDescription { get; set; }
+        public bool UseTryCatch { get; set; }
+        public string? ClientWebSite { get; set; }
+        public string? TrackingUrl { get; set; }
+        public string? ApiUrl { get; set; }
+        public string? ApiType { get; set; }
+        public string[]? Methods { get; set; }
+        public string? Services { get; set; }
+        public string? Packaging { get; set; }
+    }
+
+}

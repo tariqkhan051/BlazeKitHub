@@ -1,0 +1,264 @@
+﻿@page "/assertion-testor"
+@inject IJSRuntime JS
+
+<PageTitle>Assertion Tester</PageTitle>
+
+<br>
+<div class="modal-body">
+    <form method="dialog">
+        <div class="form-row">
+            <div class="form-group col-md-12" style="height:200px;">
+                <label for="Response">Enter your code here:</label>
+                <textarea class="form-control align-content-start" style="height:100%; resize: none;" @bind="module.code"/>
+            </div>
+        </div>
+        <br />
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <input type="text" class="form-control" placeholder="Enter argument" @bind="module.arguments" />
+            </div>
+            <div class="form-group col-md-6">
+                <input type="text" class="form-control" placeholder="Enter Values" @bind="module.values" />
+            </div>
+            <div class="form-group col-md-6" style="padding-top:8px;">
+                <input name="checkbox" type="checkbox" @bind="module.isString" value="false" />
+                <label for="IsString">Is value in string?</label>
+            </div>
+            <div class="form-group col-md-6" style="text-align:right">
+                <button type="button" class="btn btn-success btn-sm" style="margin-top:2px" @onclick="@(()=>AddToList(addedArguments, module.arguments ?? "", addedValues, module.values ?? "", isStringList, module.isString ?? false))"><i class="bi bi-plus"></i></button>
+            </div>
+        </div>
+
+        <br />
+        <div class="form-group">
+            <b>Added arguments</b>
+            <ul>
+            @foreach (var value in addedArguments.ToArray())
+            {
+                <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedArguments, value))"><i class="bi bi-trash3"></i></button> @value</li>
+            }
+            </ul>
+            <b>Added values</b>
+            <ul>
+            @foreach (var point in addedValues.ToArray())
+            {
+                <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedValues, point))"><i class="bi bi-trash3"></i></button> @point</li>
+            }
+            </ul>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label for="Response">Enter expected result:</label>
+                <input type="text" class="form-control" placeholder="Enter expected result" @bind="module.expectedResult" />
+            </div>
+        </div>
+        <br />
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <label for="Name">Result:</label>
+                <input type="text" class="form-control" readonly @bind="module.result" />
+            </div>
+
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <div class="success-msg" id="successMsg" style="display:none;">
+                    <i class="fa fa-check"></i>
+                    Assertion succeed.
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <div class="error-msg" id="errorMsg" style="display:none;">
+                    <i class="fa fa-times-circle"></i>
+                    Assertion failed.
+                </div>
+            </div>
+        </div>
+        <br />
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" @onclick="OnInitializedAsync">Clear All</button>
+            <button type="button" class="btn btn-success" @onclick="ExecuteCode">Execute code</button>
+        </div>
+    </form>
+</div>
+@code {
+    private ModuleDetail module = new();
+    private List<string> addedArguments = new();
+    private List<string> addedValues = new();
+    private List<bool> isStringList = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            module.code = string.Empty;
+            module.arguments = string.Empty;
+            module.result = string.Empty;
+            module.isString = false;
+            addedArguments = new();
+            addedValues = new();
+            isStringList = new();
+        }
+        catch (Exception e)
+        {
+            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+        }
+    }
+    private async void RemoveFromList(List<string> list, string val)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(val) && list.Contains(val))
+            {
+                list.Remove(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected error", ex.Message);
+        }
+    }
+    private async void AddToList(List<string> addedArgumentlist, string argVal, List<string> addedValuesList, string val, List<bool> isStringList, bool isString)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(argVal) && !addedArgumentlist.Contains(argVal) && !string.IsNullOrEmpty(val) && !addedValuesList.Contains(val))
+            {
+                addedArgumentlist.Add(argVal);
+                addedValuesList.Add(val);
+                isStringList.Add(isString);
+                module.values = string.Empty;
+                module.arguments = string.Empty;
+                module.isString = false;
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Validation Error", "Please enter argument and value both.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected error", ex.Message);
+        }
+    }
+    private string ReplaceArguments(string code, List<string> addedArguments, List<string> addedValues, List<bool> isStringList)
+    {
+        for (var i = 0; i < addedArguments.Count; i++)
+        {
+            if (isStringList[i] == true)
+            {
+                code = code.Replace(addedArguments[i], "\"" + addedValues[i] + "\"");
+            }
+            else
+            {
+                code = code.Replace(addedArguments[i], addedValues[i]);
+            }
+
+        }
+
+
+        return code;
+
+    }
+    private string ConvertReturnStatementToConsole(string code, List<string> addedArguments, List<string> addedValues)
+    {
+        if (code.Contains("return '"))
+        {
+            code = code.Replace("return '", "console.log('");
+            code = code.Replace("';", "');");
+        }
+        else if (code.Contains("return \""))
+        {
+            code = code.Replace("return \"", "console.log(\"");
+            code = code.Replace("\";", "\");");
+        }
+        else if (code.Contains("return "))
+        {
+            code = code.Replace("return ", "console.log(");
+            code = code.Replace(";", ");");
+        }
+
+        for (var i = 0; i < addedArguments.Count; i++)
+        {
+            code = code.Replace("return '" + addedValues[i] + "';", "console.log(\"" + addedValues[i] + ");\"");
+            code = code.Replace("return " + addedArguments[i] + ";", "console.log(" + addedArguments[i] + ");");
+        }
+
+        return code;
+    }
+    private async Task CheckAssertion(string result, string expectedResult)
+    {
+        module.result = result?.ToString() ?? "Your code does not return any value.";
+        result = module.result;
+        result = result.Replace("\n", "");
+
+        if (result.Equals(module.expectedResult))
+        {
+            await JS.InvokeVoidAsync("hideAndShowDiv", "success");
+            ClearAllLists();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("hideAndShowDiv", "failed");
+        }
+    }
+    private async Task ExecuteCode()
+    {
+        try
+        {
+            var code = module.code;
+            if (!string.IsNullOrWhiteSpace(code))
+            {
+                if (string.IsNullOrWhiteSpace(module.expectedResult))
+                {
+                    await JS.InvokeVoidAsync("errorModal", "Validation Error", "Please fill the expected result.");
+                }
+                else
+                {
+                    code = ConvertReturnStatementToConsole(code, addedArguments, addedValues);
+
+                    if (addedArguments.Count == addedValues.Count)
+                    {
+                        code = ReplaceArguments(code, addedArguments, addedValues, isStringList);
+                    }
+                    else
+                    {
+                        await JS.InvokeVoidAsync("errorModal", "Validation Error", "Argument and values count must be same.");
+                    }
+
+                    var result = await JS.InvokeAsync<string>("executeCode", code);
+
+                    await CheckAssertion(result, module.expectedResult);
+
+                    
+                }
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Validation Error", "Please enter your code before executing.");
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Error Occurred", ex.Message);
+        }
+    }
+    private void ClearAllLists()
+    {
+        addedArguments.Clear();
+        addedValues.Clear();
+        isStringList.Clear();
+    }
+    internal class ModuleDetail
+    {
+        internal string? arguments;
+        internal string? values;
+        internal string? code;
+        internal string? result;
+        internal bool? isString;
+        internal string? expectedResult;
+    }
+}

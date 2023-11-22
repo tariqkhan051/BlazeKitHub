@@ -1,0 +1,144 @@
+﻿@page "/query-builder"
+@using System.Text
+@using System.Text.RegularExpressions
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inherits Helpers.CheckBoxListBase
+@inject IConfiguration Configuration
+
+<PageTitle>Query Builder</PageTitle>
+
+<div class="modal-body">
+    <form method="dialog">
+
+        <div class="form-row">
+            <div class="form-group col-md-2">
+                <label for="Name">Module Name</label>
+                <input type="text" class="form-control" required placeholder="dpd/romania" @bind:event="oninput" @bind="module.Name" />
+            </div>
+            <div class="form-group col-md-2">
+                <label for="Name">Search Term</label>
+                <input type="text" class="form-control"  placeholder="18646" @bind:event="oninput" @bind="module.UniqueName" />
+            </div>
+            <div class="form-group col-md-2">
+                <label for="Environment">Environment*</label>
+                <select id="Environment" required class="form-control form-select" name="Type" @bind="module.Environment">
+                    <option value="Select">-Select-</option>
+                    <option value="dev">Dev</option>
+                    <option value="stage">Staging</option>
+                    <option value="prod">Production</option>
+                </select>
+            </div>
+            <div class="form-group col-md-2">
+                <label for="Platform">Platform*</label>
+                <select id="Platform" required class="form-control form-select" name="Type" @bind="module.Platform">
+                    <option value="Select">-Select-</option>
+                    <option value="shipstation">Shipstation</option>
+                    <option value="shipengine">Shipengine</option>
+                </select>
+            </div>
+            <div class="form-group col-md-2">
+                <label for="Platform">Resource</label>
+                <select id="Platform" class="form-control form-select" name="Type" @bind="module.Resource">
+                    <option value="Select">-Select-</option>
+                    <option value="Register">Register</option>
+                    <option value="CreateLabel">CreateLabel</option>
+                    <option value="SchedulePickup">SchedulePickup</option>
+                    <option value="CancelPickup">CancelPickup</option>
+                    <option value="GetRates">GetRates</option>
+                    <option value="GetRelayPoints">GetRelayPoints</option>
+                    <option value="GetRelayPoint">GetRelayPoint</option>
+                    <option value="VoidLabels">VoidLabels</option>
+                    <option value="Track">Track</option>
+                    <option value="CreateManifest">CreateManifest</option>
+                    <option value="GetManifest">GetManifest</option>
+                </select>
+            </div>
+            <div class="form-group col-md-2">
+                <label for="Platform">Case</label>
+                <select id="Platform" required class="form-control form-select" name="Case" @bind="module.Case">
+                    <option value="Select">-Select-</option>
+                    <option value="success">Success</option>
+                    <option value="error">Error</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-2">
+                <button type="submit" class="btn btn-success" @onclick="GenerateQuery">Generate</button>
+            </div>
+        </div>
+    </form>
+    <div class="form-row">
+        <div class="form-group col-md-12">
+            <label for="Name">Result</label>
+            <textarea class="form-control" rows="10" cols="50" readonly @bind="module.Result"> </textarea>
+        </div>
+
+    </div>
+</div>
+@code {
+    private ModuleDetail module = new();
+    static bool? IsDisabled { get; set; } = true;
+
+    private async Task GenerateQuery()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(module.Name) || module.Environment == "Select" || string.IsNullOrWhiteSpace(module.Environment) || string.IsNullOrWhiteSpace(module.Platform) || module.Platform == "Select")
+            {
+                throw new Exception("Please fill out required fields.");
+            }
+
+            module.Result = "";
+            string uniqueName = !string.IsNullOrEmpty(module.UniqueName) ? $"(\"{module.UniqueName}\"){Environment.NewLine} AND " : "";
+            string code = !module.Case.Equals("success") ? "500" : "200";
+            string sourceCategory = $"kubernetes/shipping/{ConvertSpacesAndUnderscores(module.Name)}/{module.Environment}/{ConvertSpacesAndUnderscores(module.Name)}/{module.Environment}/deploy";
+            string logMessage = $"{module.Resource}";
+
+            if (!string.IsNullOrWhiteSpace(module.Resource) && module.Resource != "Select")
+            {
+                string ship = uniqueName + $"_sourceCategory=\"{sourceCategory}\"{Environment.NewLine}" +
+                                $"| json field=_raw \"log.message\" | where %\"log.message\" = \"HTTP POST /{logMessage} returned {code}\"";
+                string carrier = uniqueName + $"_sourceCategory=\"{sourceCategory}\"{Environment.NewLine}" +
+                                    $"| json field = _raw \"log.level\" | where %\"log.level\" = \"debug\" {Environment.NewLine} | json field = _raw \"log.message\" | where %\"log.message\" = \"Outbound HTTP Request&Response\"";
+
+                module.Result += "=ShipEngine=" + Environment.NewLine;
+                module.Result += ship + Environment.NewLine + Environment.NewLine;
+                module.Result += "=Carrier=" + Environment.NewLine;
+                module.Result += carrier + Environment.NewLine;
+            }
+            else 
+            {
+                string ship = uniqueName + $"_sourceCategory=\"{sourceCategory}\"";
+
+                module.Result += "=ShipEngine=" + Environment.NewLine;
+                module.Result += ship + Environment.NewLine + Environment.NewLine;
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Error Occurred", ex.Message);
+        }
+    }
+
+    public string ConvertSpacesAndUnderscores(string input)
+    {
+        string pattern = @"[_\-\s]+";
+        string replacement = "/";
+        string output = Regex.Replace(input, pattern, replacement);
+        return output;
+    }
+
+    public class ModuleDetail
+    {
+        public string? Name { get; set; }
+        public string? UniqueName { get; set; }
+        public string? Environment { get; set; }
+        public string? Platform { get; set; }
+        public string? Resource { get; set; }
+        public string? Result { get; set; }
+        public string? Case { get; set; }
+    }
+}

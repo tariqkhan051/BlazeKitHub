@@ -1,0 +1,71 @@
+﻿.horizontal-list {
+    display: flex;
+    list-style-type: none;
+    padding: 0;
+}
+
+    .horizontal-list li {
+        margin-right: 10px; /* Add spacing between the items */
+    }
+
+.json-prettyprint {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    font-size: 16px;
+    line-height: 1.5;
+    font-family: Consolas, monospace;
+}
+
+    /* Apply the JSON viewer styling from the pretty-json library */
+    .json-prettyprint .object {
+        color: #1E90FF;
+    }
+
+    .json-prettyprint .array {
+        color: #228B22;
+    }
+
+    .json-prettyprint .string {
+        color: #A020F0;
+    }
+
+    .json-prettyprint .number {
+        color: #FF8C00;
+    }
+
+    .json-prettyprint .boolean {
+        color: #0000FF;
+    }
+
+    .json-prettyprint .null {
+        color: #808080;
+    }
+
+    .json-prettyprint .key {
+        color: #DC143C;
+    }
+
+.autocomplete-list {
+    position: absolute;
+    z-index: 1;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    background-color: white;
+    border: 1px solid lightgray;
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+    display: none;
+}
+
+    .autocomplete-list li {
+        padding: 5px;
+        cursor: pointer;
+    }
+
+        .autocomplete-list li:hover {
+            background-color: lightgray;
+        }
+
