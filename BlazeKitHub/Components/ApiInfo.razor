@@ -1,0 +1,38 @@
+﻿@using System.Globalization
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<h3>@headingName</h3>
+
+<div class="modal-body" style="height:550px;">
+    @if (infoData == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <textarea class="form-control align-content-start" style="height:100%; resize: none;" readonly>@infoData</textarea>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? InfoFile { get; set; }
+    private string? infoData;
+    private string? headingName;
+    TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await Http.GetStringAsync("sample-data/" + InfoFile + ".txt");
+            infoData = result.ToString();
+            headingName = textInfo.ToTitleCase(InfoFile).Replace('-', ' ');
+        }
+        catch (Exception e)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Request failed", e.Message);
+        }
+    }
+}

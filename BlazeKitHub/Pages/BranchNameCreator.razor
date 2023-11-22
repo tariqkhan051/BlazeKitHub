@@ -1,0 +1,165 @@
+﻿@page "/branch-name-creator"
+@using System.Text
+@using System.Text.RegularExpressions
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inherits Helpers.CheckBoxListBase
+@inject IConfiguration Configuration
+
+<PageTitle>Branch Name Creator</PageTitle>
+
+<br>
+<div class="modal-body">
+    <form method="dialog">
+
+        <div class="form-row">
+            <div class="form-group col-md-12">
+                <label for="Name">Case Title</label>
+                <input type="text" class="form-control" required placeholder="The Delivery Group - Unable to choose between DDP and DDU" @bind:event="oninput" @bind="module.Title" />
+            </div>
+
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-2">
+                <label for="ApplicationType">Issue Type</label>
+                <select id="ApplicationType" class="form-control form-select" name="Type" @bind="module.Type">
+                    <option value="feat">Feature</option>
+                    <option value="fix">Bug fix</option>
+                    <option value="chore">Chore</option>
+                    <option value="refactor">Code refactor</option>
+                    <option value="docs">Documentation update</option>
+                    <option value="style">Code style update</option>
+                    <option value="test">Test update</option>
+                    <option value="perf">Performance improvement</option>
+                    <option value="ci">Continuous integration</option>
+                    <option value="build">Build update</option>
+                    <option value="revert">Commit revert</option>
+                </select>
+            </div>
+            <span class="input-group-text" id="type-info-icon" data-toggle="modal" data-target="#info-modal" style="height: 30px; margin-top: 35px;">
+                <i class="fa fa-info-circle"></i>
+            </span>
+            <div class="form-group col-md">
+                <label for="FolderName">Case URL</label>
+                <input type="text" class="form-control" placeholder="https://auctane.atlassian.net/browse/INTGP-280" @bind="module.URL" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group col-md-2">
+                <button type="submit" class="btn btn-success" @onclick="GenerateBranchName" disabled="@IsDisabled">Generate</button>
+            </div>
+        </div>
+    </form>
+    <div class="form-row">
+        <div class="form-group col-md-11">
+            <label for="Name">Result</label>
+            <input type="text" class="form-control" readonly @bind="module.Result"/>
+        </div>
+        <div class="form-group col-md-1" style="align-self:center">
+            <button class="btn btn-sm btn-outline-secondary" id="copy-to-clipboard" onclick="@(() => CopyToClipboard(module.Result))" style="position: absolute; top: 0; right: 0;">
+                <span class="bi bi-clipboard-check" aria-hidden="true"> Copy</span>
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="info-modal" tabindex="-1" aria-labelledby="info-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="info-modal-label">Info</h5>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul>
+                    <li><b>feat:</b> A new feature is introduced with the changes</li>
+                    <li><b>fix:</b> A bug fix has occurred</li>
+                    <li><b>chore:</b> Changes that do not relate to a fix or feature and don't modify src or test files (for example updating dependencies)</li>
+                    <li><b>refactor:</b> Refactored code that neither fixes a bug nor adds a feature</li>
+                    <li><b>docs:</b> Updates to documentation such as the README or other markdown files</li>
+                    <li><b>style:</b> Changes that do not affect the meaning of the code, likely related to code formatting such as white-space, missing semi-colons, and so on.</li>
+                    <li><b>test:</b> Including new or correcting previous tests</li>
+                    <li><b>perf:</b> Performance improvements</li>
+                    <li><b>ci:</b> Continuous integration related</li>
+                    <li><b>build:</b> Changes that affect the build system or external dependencies</li>
+                    <li><b>revert:</b> Reverts a previous commit</li>
+                </ul>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ModuleDetail module = new();
+    static bool? IsDisabled { get; set; } = true;
+
+    private async Task GenerateBranchName()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(module.Title) || string.IsNullOrWhiteSpace(module.URL) || string.IsNullOrWhiteSpace(module.Type))
+            {
+                throw new Exception("Please fill out all fields.");
+            }
+            else
+            {
+                var caseNo = GetCaseNumber(module.URL);
+                var description = SimplifyTitle(module.Title);
+                module.Result = $"{module.Type}/{caseNo}_{description}";
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Error Occurred", ex.Message);
+        }
+    }
+
+    public static string GetCaseNumber(string url)
+    {
+        return url.Split('/')?.Where(x => x.Contains("-")).SingleOrDefault()?.ToLower() ?? string.Empty;
+    }
+
+    public static string SimplifyTitle(string str)
+    {
+        string unwanted = "*'\",_&#^@";
+        List<char> unwantedChars = unwanted.ToList<char>();
+        StringBuilder sb = new StringBuilder();
+        Regex regex = new Regex("[ ,-]{2,}", RegexOptions.Compiled);
+        str = regex.Replace(str, " ").Replace(' ', '-');
+        foreach (char c in str)
+        {
+            if (!unwantedChars.Any(x => x == c))
+                sb.Append(c);
+        }
+
+        return sb.ToString().ToLower();
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        await JS.InvokeVoidAsync("copyClipboard", text);
+    }
+
+    public class ModuleDetail
+    {
+        private string title;
+        public string? Title
+        {
+
+            get { return title; }
+            set
+            {
+                title = value;
+                IsDisabled = title?.Length < 1 ? true : false;
+            }
+        }
+        public string? URL { get; set; }
+        public string? Type { get; set; } = "task";
+        public string? Result { get; set; }
+    }
+}

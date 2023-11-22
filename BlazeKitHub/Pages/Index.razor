@@ -1,9 +1,59 @@
 ﻿@page "/"
+@inject IJSRuntime jsRuntime
+<PageTitle>Home</PageTitle>
 
-<PageTitle>Index</PageTitle>
+<h1>All tools in single app</h1>
 
-<h1>Hello, world!</h1>
+Here you can find all tools that can help you in your daily work life
 
-Welcome to your new app.
+<br>
+<br>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+You can get information related to existing modules using <a href="http://192.168.1.84/get-carrier-configuration">Get Carrier Info</a> 
+or test null/undefined/empty scenarios using  <a href="http://192.168.1.84/code-breaker">Code Breaker</a>.
+<br>
+<br>
+
+You can generate your module and tests using <a href="http://dev-35/seapps/offline-tools">Module Generator</a> or
+samples using <a href="http://dev-35/seapps/offline-tools">Validation Set Maker</a>.
+<br>
+<br>
+
+You can check/add/remove deployed modules on server using <a href="http://dev-35/seapps/deployments">Deployment Tool</a> or 
+do performance comparisons using  <a href="http://dev-35/seapps/online-tools">Performance Calculator</a>
+<br>
+<br>
+
+You can generate addresses in any type of address object in SE world using <a href="http://dev-35/seapps/offline-tools">Address Generator</a> and re-use it without making the same efforts again.
+<br>
+<br>
+<a href="http://bari-002:3936/request-generator">Request generator</a> is a tool which is designed to create multiple requests with respect to different combinations of Sender and Receiver countries for testing modules.
+
+<br>
+<br>
+We are working on more ideas to automate manual work in future.
+<br>
+<br>
+
+Feel free to share
+<a href="mailto:tariqkhan051@outlook.com?subject = BlazeKitHub Feedback&body = Here's my feedback'">
+    your feedback or suggestions
+</a>
+<br>
+<br>
+
+Happy Development! :)
+<br>
+<br>
+
+We are tracking you for security concerns.
+
+@*<button @onclick="GetIp">Get IP!!!</button>*@
+<div id="text"></div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await jsRuntime.InvokeAsync<object>("GetAddress");
+    }
+}

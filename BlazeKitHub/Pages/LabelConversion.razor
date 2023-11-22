@@ -1,0 +1,58 @@
+﻿@page "/label-conversion"
+
+<PageTitle>Label Conversion</PageTitle>
+
+<br>
+<div class="modal-body">
+    <form method="dialog">
+
+    </form>
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="base64String">Enter base64 string:</label>
+            <input type="text" class="form-control" @bind="module.base64String" />
+        </div>
+        <div class="form-group col-md-6">
+               <label for="base64Type">Enter base64 type:</label>
+                <select class="form-control" @bind="module.base64Type">
+                    <option value="">--base64 type--</option>
+                    <option value="Pdf">Pdf</option>
+                    <option value="Zpl">Zpl</option>
+                    <option value="Png">Png</option>
+                </select>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-12">
+            <label for="resultType">Enter result type:</label>
+           <select class="form-control" @bind="module.resultType">
+                <option value="">--result type--</option>
+                <option value="Pdf">Pdf</option>
+                <option value="Zpl">Zpl</option>
+                <option value="Png">Png</option>
+            </select>
+        </div>
+    </div>
+     <div class="form-row">
+        <div class="form-group col-md-12">
+            <label for="result">Result:</label>
+            <textarea class="form-control align-content-start" readonly style="height:100%; resize: none;" @bind="module.Result" />
+        </div>
+    </div>
+    <br />
+    <div class="modal-footer">
+        <button type="button" class="btn btn-primary">Clear All</button>
+        <button type="button" class="btn btn-success">Convert</button>
+    </div>
+</div> 
+@code {
+    private ModuleDetail module = new();
+
+    internal class ModuleDetail
+    {
+        internal string? base64String { get; set; }
+        internal string? base64Type { get; set; }
+        internal string? resultType { get; set; }
+        internal string? Result { get; set; }
+    }
+}

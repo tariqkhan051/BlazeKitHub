@@ -1,0 +1,651 @@
+﻿@page "/deployments"
+@using System.Text
+@using System.ComponentModel.DataAnnotations
+@using Newtonsoft.Json
+@using Newtonsoft.Json.Linq
+@using System.Threading;
+@inject IConfiguration Configuration
+@inject NavigationManager uriHelper;
+@inject HttpClient Http
+@inject IJSRuntime JS
+<PageTitle>Deployments</PageTitle>
+
+<h3>Deployments</h3>
+<div class="form-row">
+    <div class="form-group col-md-6">
+        <button type="button" class="btn btn-primary" @onclick="@(() => ShowAddDeploymentModal())">Add New Deployment</button>
+        <button type="button" class="btn btn-primary" @onclick="@(e => ShowAuthenticationModal("", "start-multiple"))">Start Multiple Instance</button>
+    </div>
+</div>
+<div id="cover-spin" style="display:none"></div>
+<div>
+    @if (@checkBoxList.Count > 0)
+    {
+        <p>Selected: @checkBoxList.Count row(s)</p>
+    }
+</div>
+<div>
+    <table id="deploymentTable" class="table">
+        <thead>
+            <tr>
+                <th><input id="selectAll" name="checkbox" @onchange="eventArgs => { CheckboxAllClicked(eventArgs.Value); }" type="checkbox" onclick="checkUncheck()" /></th>
+                <th>Name</th>
+                <th>Status</th>
+                <th style="display:none;"></th>
+                <th class="path-table">Path</th>
+                <th>Team</th>
+                <th style="width:80px">Split Logs</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (deployments != null)
+            {
+                @foreach (var deployment in deployments.OrderBy(x => x.Team).ToList())
+                {
+                    <tr>
+                        <td><input type="checkbox" name="checkbox" @onchange="eventArgs => { CheckboxClicked(deployment?.Name, eventArgs.Value); }" id="addition" value="@deployment?.Name" /></td>
+                        <td><a href=@(BASE_URL + deployment?.Name) target=”_blank” title="@(BASE_URL + deployment?.Name)">@deployment?.Name</a></td>
+                        @if (deployment?.Status == "started")
+                        {
+                            <td style="display:none;">1</td>
+                            <td style="text-align:center"><i title="Active" class="fas fa-check-circle" style="color: green;" /></td>
+                        }
+                        else
+                        {
+                            <td style="display:none;">0</td>
+                            <td style="text-align:center"><i title="Inactive" class="far fa-times-circle" style="color: red;" /></td>
+                        }
+                        <td>@deployment?.Path</td>
+                        <td style="width: 100px;">@deployment?.Team</td>
+                        @if (deployment?.LogRequest?.ToString()?.ToLower() == "true")
+                        {
+                            <td style="text-align:center"><i title="Yes" class="fas fa-check-circle" style="color: green;" /></td>
+                        }
+                        else
+                        {
+                            <td style="text-align:center"><i title="No" class="far fa-times-circle" style="color: red;" /></td>
+                        }
+                        <td>
+                            <div class="btn-group">
+                                @if (deployment?.Status == "started")
+                                {
+                                    <button type="button" class="btn btn-primary" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "refresh"))"><i title="Refresh Instance" class="bi bi-arrow-clockwise"></i></button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-primary" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "refresh"))" disabled><i title="Refresh Deployment" class="bi bi-arrow-clockwise"></i></button>
+                                }
+                                <button type="button" class="btn btn-dark" @onclick="(() => ModuleInfo(deployment?.Name))"><i title="Get Updated info" class="fa fa-arrow-up"></i></button>
+                                @if (deployment?.Status == "started")
+                                {
+                                    <button type="button" class="btn btn-success" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "start"))" disabled><i title="Already started" class="bi bi-play-fill"></i></button>
+                                    <button type="button" class="btn btn-dark" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "stop"))"><i title="Stop Deployment" class="bi bi-stop-fill"></i></button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-success" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "start"))"><i title="Start Deployment" class="bi bi-play-fill"></i></button>
+                                    <button type="button" class="btn btn-dark" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "stop"))" disabled><i title="Already stop" class="bi bi-stop-fill"></i></button>
+                                }
+                                <button type="button" class="btn btn-danger" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "unregister"))"><i title="Delete Deployment" class="bi bi-trash3-fill"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+
+        </tbody>
+    </table>
+</div>
+@code {
+
+    [CascadingParameter] public IModalService Modal { get; set; } = default!;
+    private Deployment[]? deployments;
+    private string? BASE_URL;
+    string filter = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Info();
+            await JS.InvokeVoidAsync("dataTable");
+
+        }
+        catch (HttpRequestException httpEx)
+        {
+            if (httpEx.StatusCode.HasValue)
+            {
+                await JS.InvokeVoidAsync("errorModal", "Request failed!", $"Request failed. Error status code: {(int)httpEx.StatusCode}");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Request failed!", httpEx.Message);
+            }
+        }
+    }
+    public List<string> checkBoxList { get; set; } = new List<string>();
+
+    private void CheckboxClicked(string? deploymentName, object checkedValue)
+    {
+        if ((bool)checkedValue)
+        {
+            if (!string.IsNullOrWhiteSpace(deploymentName) && !checkBoxList.Contains(deploymentName))
+            {
+                checkBoxList.Add(deploymentName);
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(deploymentName) && checkBoxList.Contains(deploymentName))
+            {
+                checkBoxList.Remove(deploymentName);
+            }
+        }
+        StateHasChanged();
+    }
+    private async void CheckboxAllClicked(object checkedValue)
+    {
+        if (deployments != null)
+        {
+            if ((bool)checkedValue)
+            {
+                filter = await JS.InvokeAsync<string>("getFilteredValue");
+
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    foreach (var dep in deployments)
+                    {
+                        if (
+                            (dep != null && dep.Name.Contains(filter) || dep.Team.Contains(filter) || dep.Path.Contains(filter))
+                            && !string.IsNullOrWhiteSpace(dep.Name) && !checkBoxList.Contains(dep.Name)
+                        )
+                        {
+                            checkBoxList.Add(dep.Name);
+                        }
+                    }
+                    filter = string.Empty;
+                }
+                else
+                {
+                    foreach (var dep in deployments)
+                    {
+                        if (!string.IsNullOrWhiteSpace(dep.Name))
+                        {
+                            checkBoxList.Add(dep.Name);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                checkBoxList.RemoveRange(0, checkBoxList.Count);
+            }
+            StateHasChanged();
+        }
+    }
+
+    private string[] GetDeploymentNames(string[] deploymentNames)
+    {
+        for (var i = 0; i < checkBoxList.Count; i++)
+        {
+            deploymentNames[i] = checkBoxList[i];
+        }
+        deploymentNames = deploymentNames.Where(c => c != null).ToArray();
+
+        return deploymentNames;
+
+    }
+    private async Task ShowAuthenticationModal(string? deploymentName, string methodName)
+    {
+        if (deployments != null)
+        {
+            string[] deploymentNames = new string[deployments.Length];
+            deploymentNames = GetDeploymentNames(deploymentNames);
+            var isStartMultiple = methodName == "start-multiple" ? true : false;
+
+            if (isStartMultiple)
+            {
+                deploymentNames = GetDeploymentNames(deploymentNames);
+            }
+            if (deploymentNames.Length == 0 && isStartMultiple)
+            {
+                await JS.InvokeVoidAsync("errorModal", "Warning!", "Please select instance(s) to be started.");
+            }
+            else
+            {
+                var deploymentModal = Modal.Show<AuthModal>("Authorization", GetModalOptions());
+                var result = await deploymentModal.Result;
+
+                try
+                {
+                    if (result.Confirmed)
+                    {
+                        var obj = new AuthenticationForm();
+                        dynamic _message = result?.Data != null ? result.Data : obj;
+                        var credentials = $"{_message?.Username}:{_message?.Password}";
+
+                        if (methodName == "start")
+                        {
+                            await Start(deploymentName ?? "", credentials, true, false);
+                        }
+                        else if (methodName == "stop")
+                        {
+                            await Stop(deploymentName ?? "", credentials, false);
+                        }
+                        else if (isStartMultiple)
+                        {
+                            StartMultiple(deploymentNames, credentials);
+                        }
+                        else if (methodName == "unregister")
+                        {
+                            UnRegister(deploymentName ?? "", credentials);
+                        }
+                        else if (methodName == "refresh")
+                        {
+                            await RefreshInstance(deploymentName ?? "", credentials);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await JS.InvokeVoidAsync("errorModal", "Authorization Error!", ex.Message);
+                }
+                finally
+                {
+                    deploymentModal = null;
+                    result = null;
+                }
+            }
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("errorModal", "Instance Not Found!", "Instance not found.");
+        }
+
+
+    }
+    private ModalOptions GetModalOptions()
+    {
+        return new ModalOptions()
+            {
+                HideCloseButton = false,
+                HideHeader = false,
+                DisableBackgroundCancel = true,
+                ActivateFocusTrap = false
+
+            };
+    }
+    private async Task ShowAddDeploymentModal()
+    {
+        var deploymentModal = Modal.Show<DeploymentModal>
+            ("Add Deployment", GetModalOptions());
+        var result = await deploymentModal.Result;
+
+        try
+        {
+            var newDeployment = new Deployment();
+            var obj = new AuthenticationForm();
+            dynamic _message = result?.Data != null ? result.Data : obj;
+            var credentials = $"{_message.Username}:{_message.Password}";
+            if (_message != null)
+            {
+                newDeployment.Name = _message.Name;
+                newDeployment.Status = string.Empty;
+                newDeployment.Port = string.Empty;
+                newDeployment.Path = GetFormattedPath(_message.Path);
+                newDeployment.Team = _message.Team;
+                newDeployment.LogRequest = _message.LogRequest;
+
+                if (result != null)
+                {
+                    if (result.Confirmed)
+                    {
+                        Register(newDeployment, credentials, false);
+                    }
+                    else
+                    {
+                        Register(newDeployment, credentials, true);
+                    }
+                }
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Request failed!", "Request failed due to some error.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Authorization Error!", ex.Message);
+        }
+        finally
+        {
+            deploymentModal.Close();
+        }
+    }
+    private string GetFormattedPath(string path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            if (path.Contains("\\\\\\"))
+            {
+                path = path.Replace("\\\\", "\\");
+            }
+            return path;
+        }
+        return string.Empty;
+    }
+    private async Task Info()
+    {
+        try
+        {
+            BASE_URL = Configuration.GetSection("urls")["DeploymentApi"];
+            deployments = await Http.GetFromJsonAsync<Deployment[]>(BASE_URL + "info");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Fetching Error!", ex.Message);
+        }
+    }
+
+    private async Task RefreshInstance(string deploymentName, string credentials)
+    {
+        try
+        {
+            var endpoint = BASE_URL + deploymentName + "/stop";
+            var index = GetDeploymentNameIndex(deploymentName);
+            await Stop(deploymentName, credentials, true);
+            await Start(deploymentName, credentials, true, true);
+            await JS.InvokeVoidAsync("successModal", "Refreshed");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Instance cannot Refreshed!", ex.Message);
+        }
+    }
+    private async Task ModuleInfo(string? deploymentName)
+    {
+        var endpoint = BASE_URL + deploymentName + "/info";
+        Deployment[]? newDeployment;
+        try
+        {
+            newDeployment = await Http.GetFromJsonAsync<Deployment[]>(endpoint);
+
+            for (var i = 0; i < deployments?.Length; i++)
+            {
+                if (deployments[i]?.Name == deploymentName && newDeployment != null)
+                {
+                    deployments[i] = newDeployment[0];
+                    break;
+                }
+            }
+            await JS.InvokeVoidAsync("successModal", "Updated");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Instance Info!", ex.Message);
+        }
+    }
+    private int GetDeploymentNameIndex(string deploymentName)
+    {
+        var deploymentNameIndex = -1;
+
+        for (var i = 0; i < deployments?.Length; i++)
+        {
+            if (deployments[i]?.Name?.ToLower() == deploymentName?.ToLower())
+            {
+                deploymentNameIndex = i;
+                break;
+            }
+        }
+
+        return deploymentNameIndex;
+    }
+    private async Task Start(string deploymentName, string credentials, bool IsStartOnly, bool isRefresh)
+    {
+        try
+        {
+            var endpoint = BASE_URL + deploymentName + "/start";
+            await Info();
+            var index = GetDeploymentNameIndex(deploymentName);
+
+            if (deployments?.Length > 0 && index >= 0)
+            {
+                var client = new HttpClient();
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
+                ("Basic", ConvertToBase64String(credentials));
+                await JS.InvokeVoidAsync("showLoader");
+                var response = await client.PostAsJsonAsync(endpoint, deployments[index]);
+                var responseString = await response.Content.ReadAsStringAsync();
+                var responseMessage = GetResponseMessage(responseString).ToLower();
+                await JS.InvokeVoidAsync("hideLoader");
+
+                if (response.IsSuccessStatusCode && responseMessage.Contains("module started at port"))
+                {
+                    if (!isRefresh)
+                    {
+                        if (IsStartOnly)
+                        {
+                            await JS.InvokeVoidAsync("successModal", "Started");
+                            await Info();
+                            StateHasChanged();
+                        }
+                        else
+                        {
+                            await JS.InvokeVoidAsync("successModal", "Registered and Started");
+                            await JS.InvokeVoidAsync("destroyDataTable"); ;
+                            await Info();
+                            await JS.InvokeVoidAsync("dataTable");
+                            StateHasChanged();
+                        }
+                    }
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("errorModal", "Instance not started!", responseMessage);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("hideLoader");
+            await JS.InvokeVoidAsync("errorModal", "Instance not started!", ex.Message);
+
+        }
+    }
+    private string GetResponseMessage(string responseString)
+    {
+        if (!string.IsNullOrWhiteSpace(responseString))
+        {
+            var jsonObj = JsonConvert.DeserializeObject<ResponseMessage>
+                (responseString);
+            return jsonObj?.message ?? "";
+        }
+        return "";
+    }
+    private async void StartMultiple(string[] DeploymentNames, string credentials)
+    {
+        try
+        {
+            var endpoint = BASE_URL + "start-multiple";
+
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
+            ("Basic", ConvertToBase64String(credentials));
+            var response = await client.PostAsJsonAsync(endpoint, DeploymentNames);
+            var responseString = await response.Content.ReadAsStringAsync();
+            var responseMessage = GetResponseMessage(responseString);
+
+            if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(responseMessage) && responseMessage == "starting modules list...")
+            {
+                await JS.InvokeVoidAsync("successModal", "Started", checkBoxList.Count);
+                await Info();
+                StateHasChanged();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Instance not started!", responseMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Instance not started", ex.Message);
+        }
+        finally
+        {
+            await JS.InvokeVoidAsync("uncheckCheckboxes");
+            checkBoxList.Clear();
+        }
+    }
+    private async Task Stop(string deploymentName, string credentials, bool isRefresh)
+    {
+        var endpoint = BASE_URL + deploymentName + "/stop";
+        var index = GetDeploymentNameIndex(deploymentName);
+
+        if (deployments?.Length > 0 && index >= 0)
+        {
+            try
+            {
+                var client = new HttpClient();
+
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
+                ("Basic", ConvertToBase64String(credentials));
+                var response = await client.PostAsJsonAsync(endpoint, deployments[index]);
+                var responseString = await response.Content.ReadAsStringAsync();
+                var responseMessage = GetResponseMessage(responseString);
+
+                if (!isRefresh)
+                {
+                    if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(responseMessage) && responseMessage == "stopping process...")
+                    {
+                        await JS.InvokeVoidAsync("successModal", "Stopped");
+                    }
+                    else
+                    {
+                        await JS.InvokeVoidAsync("errorModal", "Instance not stopped!", responseMessage);
+                    }
+                }
+                await Info();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("errorModal", "Instance not stopped!", ex.Message);
+            }
+        }
+
+    }
+    private static string ConvertToBase64String(string credentials)
+    {
+        var byteArray = Encoding.ASCII.GetBytes(credentials);
+        return Convert.ToBase64String(byteArray);
+    }
+    private async void Register(Deployment deployment, string credentials, bool isRegisterStart)
+    {
+        var endpoint = BASE_URL + "register";
+
+        try
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
+            ("Basic", ConvertToBase64String(credentials));
+            var response = await client.PostAsJsonAsync(endpoint, deployment);
+            var responseString = await response.Content.ReadAsStringAsync();
+            var responseMessage = GetResponseMessage(responseString);
+
+            if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(responseMessage) && responseMessage.ToLower().Contains("registered at path:"))
+            {
+                if (isRegisterStart)
+                {
+                    await Start(deployment.Name ?? "", credentials, false, false);
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("successModal", "Registered");
+                    await JS.InvokeVoidAsync("destroyDataTable");
+                    await Info();
+                    StateHasChanged();
+                    await JS.InvokeVoidAsync("dataTable");
+                }
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Instance not registered!", responseMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Instance not registered!", ex.Message);
+        }
+    }
+    private async void UnRegister(string deploymentName, string credentials)
+    {
+        var endpoint = BASE_URL + "unregister";
+
+        try
+        {
+            UnregisterDeployment dep = new UnregisterDeployment();
+            dep.Name = deploymentName;
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
+            ("Basic", ConvertToBase64String(credentials));
+
+            var response = await client.PostAsJsonAsync(endpoint, dep);
+            var responseString = await response.Content.ReadAsStringAsync();
+            var responseMessage = GetResponseMessage(responseString)?.ToLower();
+
+            if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(responseMessage) && responseMessage.Contains("unregistered"))
+            {
+                await JS.InvokeVoidAsync("destroyDataTable");
+                await Info();
+                StateHasChanged();
+                await JS.InvokeVoidAsync("dataTable");
+                await JS.InvokeVoidAsync("successModal", "Removed");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("errorModal", "Instance not removed!", responseMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Instance not removed!", ex.Message);
+        }
+    }
+    private void NavigateToUrl(string url)
+    {
+        uriHelper.NavigateTo(url, true);
+    }
+    public class Deployment
+    {
+        public string? Name { get; set; }
+
+        public string? Status { get; set; }
+
+        public string? Port { get; set; }
+
+        public string? Path { get; set; }
+
+        public string? Team { get; set; }
+
+        public dynamic? LogRequest { get; set; }
+    }
+
+    public class UnregisterDeployment
+    {
+        public string? Name { get; set; }
+    }
+
+    public class ResponseMessage
+    {
+        public string? message { get; set; }
+    }
+    public class AuthenticationForm
+    {
+        [Required(ErrorMessage = "Please enter {0}.")]
+        public string? Username { get; set; }
+        [Required(ErrorMessage = "Please enter {0}.")]
+        public string? Password { get; set; }
+    }
+}

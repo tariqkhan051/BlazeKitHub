@@ -1,0 +1,62 @@
+﻿@inject HttpClient Http
+@inject IJSRuntime JS
+@using BlazeKitHub.Helpers
+
+<div class="modal-body">
+    @ChildContent
+
+    <b>Last Updated: @lastUpdated</b>
+</div>
+<div class="modal-footer">
+    <div id="cover-spin" style="display:none"></div>
+    <button type="button" class="btn btn-primary" @onclick="DownloadFileFromStream"><i class="bi bi-download"></i> Download</button>
+</div>
+
+@code {
+    private string? lastUpdated;
+
+    [Parameter]
+    public string? ToolName { get; set; }
+
+    [Parameter]
+    public string? DownloadUrl { get; set; }
+
+    [Parameter]
+    public string? LastUpdateUrl { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var res = await Http.GetStringAsync(LastUpdateUrl);
+            lastUpdated = res.ToString();
+        }
+        catch (Exception e)
+        {
+            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+        }
+    }
+
+    private async Task DownloadFileFromStream()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showLoader");
+
+            var fileByteArr = await Http.GetByteArrayAsync(DownloadUrl);
+            Stream fileStream = new MemoryStream(fileByteArr);
+
+            using var streamRef = new DotNetStreamReference(stream: fileStream);
+            await JS.InvokeVoidAsync("downloadFileFromStream", string.IsNullOrWhiteSpace(ToolName) ? "Tool.zip" : ToolName + ".zip", streamRef);
+            await JS.InvokeVoidAsync("hideLoader");
+            await OnInitializedAsync();
+        }
+        catch (Exception e)
+        {
+            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+        }
+    }
+}

@@ -1,0 +1,234 @@
+﻿@page "/online-tools"
+@using Newtonsoft.Json
+@using Newtonsoft.Json.Linq
+@using System.Text.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject IConfiguration Configuration
+
+<PageTitle>Online Tools</PageTitle>
+
+<TabControl>
+    <TabPage Text="Sumo Logs">
+        <SumoLogs></SumoLogs>
+    </TabPage>
+    <TabPage Text="Branch Name Creator">
+        <BranchNameCreator></BranchNameCreator>
+    </TabPage>
+    @*<TabPage Text="Sumo Query Builder">
+        <QueryBuilder></QueryBuilder>
+    </TabPage>*@
+   
+    <TabPage Text="Performance calculator">
+        <div class="modal-body">
+            <form method="dialog">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="Request">Request</label>
+                        <textarea class="form-control align-content-start" style="height:100%; resize: none;" placeholder="Enter request" @bind="request" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Scenarios">Scenario(s)</label>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top:2px" @onclick="@(()=>AddToList(addedScenarios,scenario))"><i class="bi bi-plus"></i></button>
+                        <input type="text" class="form-control" placeholder="Enter scenario" @bind="scenario" />
+
+                        <label for="Endpoints">Endpoint(s)</label>
+                        <button type="button" class="btn btn-success btn-sm" style="margin-top:2px"><i class="bi bi-plus" @onclick="@(()=>AddToList(addedEndpoints, endpoint))"></i></button>
+                        <input type="text" class="form-control" placeholder="Enter endpoint" @bind="endpoint" />
+
+                        <label for="IterationsCount">Iterations Count</label>
+                        <input type="number" class="form-control" placeholder="Enter the iterations count" @bind="perfRequest.IterationsCount" />
+
+                        <div class="form-group">
+                            <b>Added scenarios</b>
+                            <ul>
+                                @foreach (var value in addedScenarios.ToArray())
+                                {
+                                    <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedScenarios, value))"><i class="bi bi-trash3"></i></button> @value</li>
+                                }
+                            </ul>
+                            <b>Added endpoints</b>
+                            <ul>
+                                @foreach (var point in addedEndpoints.ToArray())
+                                {
+                                    <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedEndpoints, point))"><i class="bi bi-trash3"></i></button> @point</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="form-row">
+                    <div class="form-group col-md-12" style="height:400px;">
+                        <label for="Response">Response</label>
+                        <textarea class="form-control align-content-start" style="height:100%; resize: none;" readonly @bind="response" />
+                    </div>
+                </div>
+                <br />
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="OnInitializedAsync">Clear All</button>
+                    <button type="button" class="btn btn-success" @onclick="CheckPerformance">Test</button>
+                </div>
+            </form>
+        </div>
+    </TabPage>
+    <TabPage Text="Assertion tester">
+        <AssertionTestor></AssertionTestor>
+    </TabPage>
+    <TabPage Text="Label Conversion">
+        <LabelConversion></LabelConversion>
+    </TabPage>
+    <TabPage Text="Request Generator">
+       <RequestGenerator></RequestGenerator>
+    </TabPage>
+</TabControl>
+
+@code {
+    private PerformanceRequest perfRequest = new();
+    private List<string> addedEndpoints = new();
+    private List<string> addedScenarios = new();
+    private string? endpoint, scenario, request, response, BASE_URL, serviceEndpoint;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            request = string.Empty;
+            response = string.Empty;
+            endpoint = string.Empty;
+            scenario = string.Empty;
+            addedEndpoints = new();
+            addedScenarios = new();
+            perfRequest.IterationsCount = 0;
+
+            BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+            serviceEndpoint = BASE_URL + "/perf/test";
+        }
+        catch (Exception e)
+        {
+            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+        }
+    }
+
+    #region Performance API UI
+
+    private async Task CheckPerformance()
+    {
+        try
+        {
+            response = string.Empty;
+            string[] addedScen = addedScenarios.ToArray();
+            string[] addedEndp = addedEndpoints.ToArray();
+
+            JObject json = JObject.Parse(request);
+            perfRequest.Request = json;
+            perfRequest.Scenarios = new Scenario[addedScen.Length];
+            perfRequest.Endpoints = new Endpoints[addedEndp.Length];
+
+
+            for (int i = 0; i < addedScen.Length; i++)
+            {
+                perfRequest.Scenarios[i] = new Scenario() { Regex = addedScen[i] };
+            }
+            for (int i = 0; i < addedEndp.Length; i++)
+            {
+                var urlObject = new Endpoint() { Url = addedEndp[i] };
+                perfRequest.Endpoints[i] = new Endpoints() { Endpoint = urlObject };
+            }
+            var res = await Http.PostAsJsonAsync(serviceEndpoint, perfRequest);
+
+            if (res.IsSuccessStatusCode)
+            {
+                var data = await res.Content.ReadFromJsonAsync<JsonElement>();
+                response = JsonPrettify(data.ToString());
+                StateHasChanged();
+            }
+            else
+            {
+                response = $"Error received from server: {res.ReasonPhrase}";
+            }
+
+        }
+        catch (Exception e)
+        {
+            response = e.Message;
+            StateHasChanged();
+        }
+    }
+
+    private async void AddToList(List<string> list, string val)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(val) && !list.Contains(val))
+            {
+                list.Add(val);
+                if (endpoint.Equals(val))
+                {
+                    endpoint = string.Empty;
+                }
+                else
+                {
+                    scenario = string.Empty;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected error", ex.Message);
+        }
+    }
+
+    private async void RemoveFromList(List<string> list, string val)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(val) && list.Contains(val))
+            {
+                list.Remove(val);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected error", ex.Message);
+        }
+    }
+
+    public string JsonPrettify(string json)
+    {
+        using (var stringReader = new StringReader(json))
+        using (var stringWriter = new StringWriter())
+        {
+            var jsonReader = new JsonTextReader(stringReader);
+            var jsonWriter = new JsonTextWriter(stringWriter) { Formatting = Formatting.Indented };
+            jsonWriter.WriteToken(jsonReader);
+            return stringWriter.ToString();
+        }
+    }
+
+    private async void ShowMsg()
+    {
+        await JS.InvokeVoidAsync("errorModal", "Tool unavailable", "This tool is not available for use yet.");
+    }
+
+    public class PerformanceRequest
+    {
+        public Object? Request { get; set; }
+        public Scenario[]? Scenarios { get; set; }
+        public int? IterationsCount { get; set; }
+        public Endpoints[]? Endpoints { get; set; }
+    }
+    public class Endpoints
+    {
+        public Endpoint? Endpoint { get; set; }
+    }
+    public class Endpoint
+    {
+        public string? Url { get; set; }
+    }
+    public class Scenario
+    {
+        public string? Regex { get; set; }
+    }
+    #endregion
+}
