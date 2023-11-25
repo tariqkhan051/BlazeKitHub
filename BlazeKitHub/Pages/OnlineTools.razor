@@ -101,7 +101,7 @@
             addedScenarios = new();
             perfRequest.IterationsCount = 0;
 
-            BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+            BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
             serviceEndpoint = BASE_URL + "/perf/test";
         }
         catch (Exception e)

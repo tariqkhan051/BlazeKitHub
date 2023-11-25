@@ -45,7 +45,7 @@
     {
         try
         {
-            BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+            BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
             tools = await Http.GetFromJsonAsync<ToolDetail[]>(BASE_URL + "/tool/details");
         }
         catch (Exception e)
