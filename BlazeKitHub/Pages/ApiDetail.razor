@@ -50,8 +50,8 @@ else
                                     case "performance-calculator":
                                         urlValue = @PERF_URL;
                                         break;
-                                    case "sumo-logs-api":
-                                        urlValue = @SUMO_LOGS_URL;
+                                    case "sumo-logic-api":
+                                        urlValue = SUMO_LOGIC_URL;
                                         break;
                                     default:
                                         urlValue = string.Empty;
@@ -79,7 +79,7 @@ else
 
 @code {
     private SEInfo[]? infoData;
-    private string? BASE_URL, PERF_URL, ADDRESS_GENERATOR_URL, MODULE_GENERATOR_URL, SAMPLES_GENERATOR_URL, SUMO_LOGS_URL;
+    private string? BASE_URL, PERF_URL, ADDRESS_GENERATOR_URL, MODULE_GENERATOR_URL, SAMPLES_GENERATOR_URL, SUMO_LOGIC_URL;
     private string urlValue = string.Empty, apiDetailToShow = string.Empty;
 
     protected override async Task OnInitializedAsync()
@@ -91,7 +91,7 @@ else
             ADDRESS_GENERATOR_URL = BASE_URL + "/address";
             MODULE_GENERATOR_URL = BASE_URL + "/module-generator";
             SAMPLES_GENERATOR_URL = BASE_URL + "/samples";
-            SUMO_LOGS_URL = BASE_URL + "/sumoLogs";
+            SUMO_LOGIC_URL = BASE_URL + "/sumoLogs";
             await JS.InvokeVoidAsync("dataTable", "deploymentTable");
         }
         catch (Exception e)
@@ -102,7 +102,7 @@ else
 
     private async Task GetInfo()
     {
-        BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+        BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
         infoData = await Http.GetFromJsonAsync<SEInfo[]>(BASE_URL + "/info");
     }
 

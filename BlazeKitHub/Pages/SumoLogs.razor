@@ -523,9 +523,9 @@
 
     public async Task<List<LogsResult>> SearchSumoLogs(string from, string to, string query, string team)
     {
-        string? BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+        string? BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
         string endpointUrl = BASE_URL + "/sumoLogs/search";
-        //string endpointUrl = "http://localhost:5469/internal-se/sumoLogs/search";
+        //string endpointUrl = "http://localhost:5469/api/sumoLogs/search";
         string requestBody = $@"{{
             ""from"" : ""{from}"",
             ""to"" : ""{to}"",

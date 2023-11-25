@@ -47,7 +47,7 @@ else
     {
         try
         {
-            BASE_URL = Configuration.GetSection("urls")["InternalSEApi"];
+            BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
             await GetUsefulLinks();
             await JS.InvokeVoidAsync("dataTable", "deploymentTable");
         }
