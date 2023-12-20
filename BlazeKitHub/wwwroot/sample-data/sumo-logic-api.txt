@@ -1,0 +1,16 @@
+﻿The Sumo Logic API is a RESTful API that allows you to programmatically access and manage your Sumo Logic environment. The API can be used to perform a variety of tasks, including:
+
+Collecting log data from a variety of sources
+Storing log data in Sumo Logic
+Querying log data
+Creating alerts based on log data
+Generating reports based on log data
+Integrating Sumo Logic with other systems
+The Sumo Logic API is a powerful tool that can be used to extend the functionality of Sumo Logic and to automate tasks related to log management.
+
+Here are some of the benefits of using the Sumo Logic API:
+
+Extend the functionality of Sumo Logic: The Sumo Logic API can be used to extend the functionality of Sumo Logic by adding new features and capabilities. For example, you can use the API to create custom alerts or to generate reports based on custom criteria.
+Automate tasks related to log management: The Sumo Logic API can be used to automate tasks related to log management, such as collecting log data, storing log data, and querying log data. This can save you time and effort and can help you to improve the efficiency of your log management process.
+Integrate Sumo Logic with other systems: The Sumo Logic API can be used to integrate Sumo Logic with other systems, such as monitoring systems, ticketing systems, and security systems. This can help you to gain a more complete view of your IT environment and to improve your ability to troubleshoot problems and to respond to incidents.
+If you are looking for a way to extend the functionality of Sumo Logic, automate tasks related to log management, or integrate Sumo Logic with other systems, then the Sumo Logic API is a great option.

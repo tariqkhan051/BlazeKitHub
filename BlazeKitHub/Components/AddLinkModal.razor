@@ -7,13 +7,13 @@
 
         <div class="form-group">
             <label>Name</label>
-            <InputText class="form-control" placeholder="Native Rating" @bind-Value="_form.Name" />
+            <InputText class="form-control" placeholder="Blazor Tutorial" @bind-Value="_form.Name" />
             <ValidationMessage For="@(() => _form.Name)" />
         </div>
 
         <div class="form-group ">
             <label>Description</label>
-            <InputText class="form-control" placeholder="Native rating documentation" @bind-Value="_form.Description" />
+            <InputText class="form-control" placeholder="Build your first web app with ASP.NET Core using Blazor" @bind-Value="_form.Description" />
             <ValidationMessage For="@(() => _form.Description)" />
         </div>
 
@@ -24,7 +24,7 @@
         </div>
 
         <div class="modal-footer">
-            <button id="register-submit" class="btn btn-success" type="submit" disabled="@(!context.IsModified() || !context.Validate())" @onclick="SubmitForm">Add Link</button>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@(!context.IsModified() || !context.Validate())" OnClick="SubmitForm">Add Link</MudButton>
         </div>
     </EditForm>
 </div>
@@ -34,7 +34,7 @@
     private readonly AddLinkForm _form = new();
     private EditContext context;
 
-    protected override void OnInitialized() => BlazoredModal.SetTitle("Add a new link");
+    protected override void OnInitialized() => BlazoredModal.SetTitle("Add a new link"); 
 
     private async Task SubmitForm()
     {

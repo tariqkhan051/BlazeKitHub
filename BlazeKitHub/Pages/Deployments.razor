@@ -13,8 +13,8 @@
 <h3>Deployments</h3>
 <div class="form-row">
     <div class="form-group col-md-6">
-        <button type="button" class="btn btn-primary" @onclick="@(() => ShowAddDeploymentModal())">Add New Deployment</button>
-        <button type="button" class="btn btn-primary" @onclick="@(e => ShowAuthenticationModal("", "start-multiple"))">Start Multiple Instance</button>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => ShowAddDeploymentModal())">Add New Deployment</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(e => ShowAuthenticationModal("", "start-multiple"))">Start Multiple Instance</MudButton>
     </div>
 </div>
 <div id="cover-spin" style="display:none"></div>
@@ -25,7 +25,7 @@
     }
 </div>
 <div>
-    <table id="deploymentTable" class="table">
+    <table id="deploymentTable" class="mud-table-container">
         <thead>
             <tr>
                 <th><input id="selectAll" name="checkbox" @onchange="eventArgs => { CheckboxAllClicked(eventArgs.Value); }" type="checkbox" onclick="checkUncheck()" /></th>
@@ -272,8 +272,8 @@
                 HideCloseButton = false,
                 HideHeader = false,
                 DisableBackgroundCancel = true,
-                ActivateFocusTrap = false
-
+                ActivateFocusTrap = false,
+                Position = ModalPosition.Middle
             };
     }
     private async Task ShowAddDeploymentModal()

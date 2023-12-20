@@ -8,7 +8,7 @@
 
 <div class="form-row">
     <div class="form-group col-md-6">
-        <button type="button" class="btn btn-primary" @onclick="@(() => ShowAddLinkModal())">Add New</button>
+        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" OnClick="@(() => ShowAddLinkModal())">Add New</MudButton>
     </div>
 </div>
 
@@ -19,7 +19,7 @@
 else
 {
     <div class="modal-body">
-        <table class="table" id="deploymentTable">
+        <table class="mud-table-container" id="deploymentTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -30,7 +30,7 @@ else
                 @foreach (var link in linkInfo)
                 {
                     <tr>
-                        <td><a href="@link.Url" target="_blank">@link.Name</a></td>
+                        <td><MudLink Href="@link.Url" target="_blank">@link.Name</MudLink></td>
                         <td>@link.Details</td>
                     </tr>
                 }
@@ -70,7 +70,8 @@ else
                     HideCloseButton = false,
                     HideHeader = false,
                     DisableBackgroundCancel = true,
-                    ActivateFocusTrap = false
+                    ActivateFocusTrap = false,
+                    Position = ModalPosition.Middle
                 });
 
         var result = await credentialsModal.Result;

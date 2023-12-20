@@ -18,12 +18,12 @@ else
         @if (!string.IsNullOrEmpty(apiDetailToShow))
         {
             <ApiInfo InfoFile=@apiDetailToShow></ApiInfo>
-            <div align="right"><button class="btn btn-primary" style="margin-top:5px" @onclick="@(() => apiDetailToShow = string.Empty)">Back</button></div>
+            <div align="right"><MudButton Variant="Variant.Filled" Color="Color.Primary" Style="margin-top:5px" OnClick="@(() => apiDetailToShow = string.Empty)">Back</MudButton></div>
         }
         else
         {
             <div>
-                <table class="table" id="deploymentTable">
+                <table class="mud-table-container" id="deploymentTable">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -44,8 +44,8 @@ else
                                     case "address-generator":
                                         urlValue = @ADDRESS_GENERATOR_URL;
                                         break;
-                                    case "module-generator":
-                                        urlValue = @MODULE_GENERATOR_URL;
+                                    case "code-generator":
+                                        urlValue = CODE_GENERATOR_URL;
                                         break;
                                     case "performance-calculator":
                                         urlValue = @PERF_URL;
@@ -57,17 +57,19 @@ else
                                         urlValue = string.Empty;
                                         break;
                                 }
-                                <td><a href=@urlValue title=@urlValue target=" _blank">@data.Name</a></td>
+                                <td><MudLink Href=@urlValue title=@urlValue target=" _blank">@data.Name</MudLink></td>
                                 @if (data.Status == "Active")
                                 {
-                                    <td style="text-align:center"><i title="Active" class="fas fa-check-circle" style="color: green;" /></td>
+                                    <td style="text-align:center"><MudIcon Icon="@Icons.Material.Rounded.CheckCircle" Color="Color.Success" /></td>
                                 }
                                 else
                                 {
-                                    <td style="text-align:center"><i title="Inactive" class="fas fa-times-circle" style="color: red;" /></td>
+                                    <td style="text-align:center"><MudIcon Icon="@Icons.Material.Rounded.RemoveCircle" Color="Color.Error" /></td>
                                 }
                                 <td>@data.Details</td>
-                                <td style="text-align:center"><button class="btn" @onclick="@(() => apiDetailToShow = @data.Name)"><i class="bi bi-info-circle-fill"></i></button></td>
+                                <td style="text-align:center">
+                                    <MudIconButton Icon="@Icons.Material.Rounded.Info" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => apiDetailToShow = @data.Name)" />
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -78,8 +80,8 @@ else
 }
 
 @code {
-    private SEInfo[]? infoData;
-    private string? BASE_URL, PERF_URL, ADDRESS_GENERATOR_URL, MODULE_GENERATOR_URL, SAMPLES_GENERATOR_URL, SUMO_LOGIC_URL;
+    private APIDetail[]? infoData;
+    private string? BASE_URL, PERF_URL, ADDRESS_GENERATOR_URL, CODE_GENERATOR_URL, SAMPLES_GENERATOR_URL, SUMO_LOGIC_URL;
     private string urlValue = string.Empty, apiDetailToShow = string.Empty;
 
     protected override async Task OnInitializedAsync()
@@ -89,7 +91,7 @@ else
             await GetInfo();
             PERF_URL = BASE_URL + "/perf";
             ADDRESS_GENERATOR_URL = BASE_URL + "/address";
-            MODULE_GENERATOR_URL = BASE_URL + "/module-generator";
+            CODE_GENERATOR_URL = BASE_URL + "/code-generator";
             SAMPLES_GENERATOR_URL = BASE_URL + "/samples";
             SUMO_LOGIC_URL = BASE_URL + "/sumoLogs";
             await JS.InvokeVoidAsync("dataTable", "deploymentTable");
@@ -103,10 +105,10 @@ else
     private async Task GetInfo()
     {
         BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
-        infoData = await Http.GetFromJsonAsync<SEInfo[]>(BASE_URL + "/info");
+        infoData = await Http.GetFromJsonAsync<APIDetail[]>(BASE_URL + "/info");
     }
 
-    public class SEInfo
+    public class APIDetail
     {
         public string Name { get; set; } = string.Empty;
 
