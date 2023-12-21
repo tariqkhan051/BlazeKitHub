@@ -5,37 +5,39 @@
 
 <PageTitle>Offline Tools</PageTitle>
 
-<TabControl>
-    @if (tools != null)
-    {
-        @foreach (var tool in tools)
+@if (tools != null)
+{
+    <MudTabs Elevation="4" Rounded="true" Centered="true" Color="@Color.Secondary" AlwaysShowScrollButtons TabPanelClass="capitalize-text">
+         @foreach (var tool in tools)
         {
-            <TabPage Text=@tool.title>
+            <MudTabPanel Text=@tool.title>
                 <DownloadTool DownloadUrl=@tool.downloadUrl LastUpdateUrl=@tool.lastUpdatedUrl ToolName=@tool.title>
                     <ChildContent>
-                        <h3>@tool.title</h3>
-                        <p>
-                            @tool.description
+                        <MudText Typo="Typo.h5">@tool.title</MudText>
+
+                            <p>
+                                @tool.description
                         </p>
                         @if (!string.IsNullOrWhiteSpace(@tool?.howTo))
                         {
-                            <h5>How to use</h5>
-                            <ul>
+                            <MudText Typo="Typo.h6">How to use</MudText>
+
+                            <MudTimeline TimelinePosition="TimelinePosition.Start">
                                 @foreach (var str in @tool?.howTo?.Split("<br>"))
                                 {
                                     @if (!string.IsNullOrWhiteSpace(str))
                                     {
-                                        <li> @str </li>
+                                        <MudTimelineItem Color="Color.Primary" Size="Size.Small"><MudText>@str</MudText></MudTimelineItem>
                                     }
                                 }
-                            </ul>
+                            </MudTimeline>
                         }
                     </ChildContent>
                 </DownloadTool>
-            </TabPage>
+            </MudTabPanel>
         }
-    }
-</TabControl>
+    </MudTabs>
+}
 
 @code {
     private string? BASE_URL;
@@ -50,7 +52,7 @@
         }
         catch (Exception e)
         {
-            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+            await JS.InvokeVoidAsync("errorModal", "An error occurred", e.Message);
         }
     }
 

@@ -9,7 +9,7 @@
         <div class="form-row">
             <div class="form-group col-md-12" style="height:200px;">
                 <label for="Response">Enter your code here:</label>
-                <textarea class="form-control align-content-start" style="height:100%; resize: none;" @bind="module.code"/>
+                <textarea class="form-control align-content-start" style="height:100%; resize: none;" @bind="module.code" />
             </div>
         </div>
         <br />
@@ -25,7 +25,7 @@
                 <label for="IsString">Is value in string?</label>
             </div>
             <div class="form-group col-md-6" style="text-align:right">
-                <button type="button" class="btn btn-success btn-sm" style="margin-top:2px" @onclick="@(()=>AddToList(addedArguments, module.arguments ?? "", addedValues, module.values ?? "", isStringList, module.isString ?? false))"><i class="bi bi-plus"></i></button>
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Style="margin-top:2px" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(addedArguments, module.arguments ?? "", addedValues, module.values ?? "", isStringList, module.isString ?? false))" />
             </div>
         </div>
 
@@ -33,17 +33,21 @@
         <div class="form-group">
             <b>Added arguments</b>
             <ul>
-            @foreach (var value in addedArguments.ToArray())
-            {
-                <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedArguments, value))"><i class="bi bi-trash3"></i></button> @value</li>
-            }
+                @foreach (var value in addedArguments.ToArray())
+                {
+                    <li style="list-style:none">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(()=>RemoveFromList(addedArguments, value))" />@value
+                    </li>
+                }
             </ul>
             <b>Added values</b>
             <ul>
-            @foreach (var point in addedValues.ToArray())
-            {
-                <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedValues, point))"><i class="bi bi-trash3"></i></button> @point</li>
-            }
+                @foreach (var point in addedValues.ToArray())
+                {
+                    <li style="list-style:none">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(()=>RemoveFromList(addedArguments, point))" />@point
+                    </li>
+                }
             </ul>
         </div>
         <div class="form-row">
@@ -78,8 +82,8 @@
         </div>
         <br />
         <div class="modal-footer">
-            <button type="button" class="btn btn-primary" @onclick="OnInitializedAsync">Clear All</button>
-            <button type="button" class="btn btn-success" @onclick="ExecuteCode">Execute code</button>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnInitializedAsync" Class="mr-2">Clear All</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="ExecuteCode" >Execute code</MudButton>
         </div>
     </form>
 </div>
@@ -103,7 +107,7 @@
         }
         catch (Exception e)
         {
-            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+            await JS.InvokeVoidAsync("errorModal", "An error occurred", e.Message);
         }
     }
     private async void RemoveFromList(List<string> list, string val)
@@ -232,7 +236,7 @@
 
                     await CheckAssertion(result, module.expectedResult);
 
-                    
+
                 }
             }
             else

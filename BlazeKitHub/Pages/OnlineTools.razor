@@ -8,18 +8,10 @@
 
 <PageTitle>Online Tools</PageTitle>
 
-<TabControl>
-    <TabPage Text="Sumo Logs">
-        <SumoLogs></SumoLogs>
-    </TabPage>
-    <TabPage Text="Branch Name Creator">
-        <BranchNameCreator></BranchNameCreator>
-    </TabPage>
-    @*<TabPage Text="Sumo Query Builder">
-        <QueryBuilder></QueryBuilder>
-    </TabPage>*@
-   
-    <TabPage Text="Performance calculator">
+<MudTabs Elevation="4" Rounded="true" Centered="true" Color="@Color.Secondary" AlwaysShowScrollButtons TabPanelClass="capitalize-text">
+    <MudTabPanel Text="Sumo Logs"><SumoLogs /></MudTabPanel>
+    <MudTabPanel Text="Branch Name Creator"><BranchNameCreator /></MudTabPanel>
+    <MudTabPanel Text="Performance calculator">
         <div class="modal-body">
             <form method="dialog">
                 <div class="form-row">
@@ -29,11 +21,11 @@
                     </div>
                     <div class="form-group col-md-6">
                         <label for="Scenarios">Scenario(s)</label>
-                        <button type="button" class="btn btn-success btn-sm" style="margin-top:2px" @onclick="@(()=>AddToList(addedScenarios,scenario))"><i class="bi bi-plus"></i></button>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Style="margin-top:2px" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(addedScenarios,scenario))" />
                         <input type="text" class="form-control" placeholder="Enter scenario" @bind="scenario" />
 
                         <label for="Endpoints">Endpoint(s)</label>
-                        <button type="button" class="btn btn-success btn-sm" style="margin-top:2px"><i class="bi bi-plus" @onclick="@(()=>AddToList(addedEndpoints, endpoint))"></i></button>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Style="margin-top:2px" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(addedEndpoints, endpoint))" />
                         <input type="text" class="form-control" placeholder="Enter endpoint" @bind="endpoint" />
 
                         <label for="IterationsCount">Iterations Count</label>
@@ -44,14 +36,18 @@
                             <ul>
                                 @foreach (var value in addedScenarios.ToArray())
                                 {
-                                    <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedScenarios, value))"><i class="bi bi-trash3"></i></button> @value</li>
+                                    <li style="list-style-type: none;">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(()=>RemoveFromList(addedScenarios, value))" />@value
+                                    </li>
                                 }
                             </ul>
                             <b>Added endpoints</b>
                             <ul>
                                 @foreach (var point in addedEndpoints.ToArray())
                                 {
-                                    <li style="list-style-type: none;"><button class="btn btn-outline-danger btn-sm" style="border:none" @onclick="@(()=>RemoveFromList(addedEndpoints, point))"><i class="bi bi-trash3"></i></button> @point</li>
+                                    <li style="list-style-type: none;">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(()=>RemoveFromList(addedEndpoints, point))" />@point
+                                    </li>
                                 }
                             </ul>
                         </div>
@@ -66,22 +62,16 @@
                 </div>
                 <br />
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" @onclick="OnInitializedAsync">Clear All</button>
-                    <button type="button" class="btn btn-success" @onclick="CheckPerformance">Test</button>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnInitializedAsync" Class="mr-2">Clear All</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="CheckPerformance">Test</MudButton>
                 </div>
             </form>
         </div>
-    </TabPage>
-    <TabPage Text="Assertion tester">
-        <AssertionTestor></AssertionTestor>
-    </TabPage>
-    <TabPage Text="Label Conversion">
-        <LabelConversion></LabelConversion>
-    </TabPage>
-    <TabPage Text="Request Generator">
-       <RequestGenerator></RequestGenerator>
-    </TabPage>
-</TabControl>
+    </MudTabPanel>
+    <MudTabPanel Text="Assertion tester"><AssertionTestor /></MudTabPanel>
+    <MudTabPanel Text="Label Conversion"><LabelConversion /></MudTabPanel>
+    <MudTabPanel Text="Request Generator"><RequestGenerator /></MudTabPanel>
+</MudTabs>
 
 @code {
     private PerformanceRequest perfRequest = new();
@@ -106,7 +96,7 @@
         }
         catch (Exception e)
         {
-            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+            await JS.InvokeVoidAsync("errorModal", "An error occurred", e.Message);
         }
     }
 

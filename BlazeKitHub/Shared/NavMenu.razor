@@ -1,66 +1,40 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">BlazeKitHub</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
-
-<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="deployments">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Deployments
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="offline-tools">
-                <span class="oi oi-cloud-download" aria-hidden="true"></span> Offline Tools
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="online-tools">
-                <span class="oi oi-browser" aria-hidden="true"></span> Online Tools
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="info">
-                <span class="oi oi-info" aria-hidden="true"></span> API Details
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="module-generator">
-                <span class="oi oi-code" aria-hidden="true"></span> Code Generator
-            </NavLink>
-        </div>     
-       
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="links">
-                <span class="oi oi-link-intact" aria-hidden="true"></span> Useful Links
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="credentials-manager">
-                <span class="oi oi-spreadsheet" aria-hidden="true"></span> Credentials Manager
-            </NavLink>
-        </div>
-    </nav>
-</div>
+﻿<MudNavMenu Color="Color.Primary" Bordered="true" Margin="Margin.Normal">
+    @foreach (var link in GetNavigationLinks())
+    {
+        <MudNavLink Href="@link.Href" Match="@link.Match" Icon="@link.Icon" Style="py-5">@link.Text</MudNavLink>
+    }
+</MudNavMenu>
 
 @code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
+    private List<NavLinkInfo> GetNavigationLinks()
     {
-        collapseNavMenu = !collapseNavMenu;
+        return new List<NavLinkInfo>
+        {
+            new NavLinkInfo("/", Icons.Material.Rounded.Home, "Home", NavLinkMatch.All),
+            new NavLinkInfo("/deployments",  Icons.Material.Rounded.ViewList, "Deployments"),
+            new NavLinkInfo("/offline-tools",  Icons.Material.Rounded.DownloadForOffline, "Offline Tools"),
+            new NavLinkInfo("/online-tools",  Icons.Material.Rounded.CloudUpload, "Online Tools"),
+            new NavLinkInfo("/info",  Icons.Material.Rounded.Info, "API Details"),
+            new NavLinkInfo("/code-generator",  Icons.Material.Rounded.Code, "Code Generator"),
+            new NavLinkInfo("/links",  Icons.Material.Rounded.AddLink, "Useful Links"),
+            new NavLinkInfo("/credentials-manager",  Icons.Material.Rounded.Login, "My Credentials"),
+        };
+    }
+
+    private class NavLinkInfo
+    {
+        public NavLinkInfo(string href, string icon, string text, NavLinkMatch match = NavLinkMatch.All)
+        {
+            Href = href;
+            Match = match;
+            Icon = icon;
+            Text = text;
+        }
+
+        public string Href { get; }
+        public NavLinkMatch Match { get; }
+        public string Icon { get; }
+        public string Text { get; }
     }
 }
+

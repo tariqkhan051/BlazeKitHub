@@ -1,0 +1,224 @@
+﻿@page "/code-generator"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inherits Helpers.CheckBoxListBase
+@inject IConfiguration Configuration
+
+<PageTitle>Code Generator</PageTitle>
+
+<h3>Code Generator</h3>
+<i class="text-muted">Note: You can leave all the values empty and click "Generate" button to download a template.</i>
+<div class="modal-body">
+    <form method="dialog">
+        <MudExpansionPanels MultiExpansion="true">
+            <MudExpansionPanel Text="Basic Details" IsInitiallyExpanded="true">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="Name">App Name</label>
+                        <input type="text" class="form-control" placeholder="Enter app name" @bind="module.Name" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="FolderName">Folder name</label>
+                        <input type="text" class="form-control" placeholder="Enter project folder name" @bind="module.FolderName" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-8">
+                        <label for="CarrierDescription">App description</label>
+                        <input type="text" class="form-control" placeholder="Enter app description" @bind="module.CarrierDescription" />
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="ApiType">API Type</label>
+                        <select id="ApiType" class="form-control form-select" name="ApiType" @bind="module.ApiType">
+                            <option selected value="rest-client">JSON</option>
+                            <option value="soap-client">XML</option>
+                            <option value="form-url-encoded">Form URL Encoded</option>
+                        </select>
+                    </div>
+                </div>
+            </MudExpansionPanel>
+
+            <MudExpansionPanel Text="URLs">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="ClientWebSite">App URL</label>
+                        <input type="text" class="form-control" placeholder="Enter client's website URL" @bind="module.ClientWebSite" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ApiUrl">Base API URL</label>
+                        <input type="text" class="form-control" placeholder="Enter base API URL" @bind="module.ApiUrl" />
+                    </div>
+                </div>
+            </MudExpansionPanel>
+
+            <MudExpansionPanel Text="Services">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Style="margin-bottom:2px" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(supportedServices,service))" />
+                        <label for="ServicesAnswers">Supported services</label>
+                        <input type="text" class="form-control" placeholder="Enter service name" @bind="service" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PackagingAnswers">Services added</label><i class="text-muted"> (click to remove)</i><br />
+                        @foreach (var service in supportedServices.ToArray())
+                        {
+                            <MudButton Variant="Variant.Outlined" Style="margin-right: 4px; margin-bottom:4px" Color="Color.Secondary" OnClick="@(()=>RemoveFromList(supportedServices,@service))">@service</MudButton>
+
+                        }
+                    </div>
+                </div>
+            </MudExpansionPanel>
+
+            <MudExpansionPanel Text="Packaging Types">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Style="margin-bottom:2px" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(supportedPackagingTypes,package))" />
+                        <label for="PackagingAnswers">Supported packaging types</label>
+                        <input type="text" class="form-control" placeholder="Enter packaging type name" @bind="package" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ServicesAnswers">Packaging types added</label><i class="text-muted"> (click to remove)</i><br />
+                        @foreach (var pkg in supportedPackagingTypes.ToArray())
+                        {
+                            <MudButton Variant="Variant.Outlined" Style="margin-right: 4px; margin-bottom:4px" Color="Color.Secondary" OnClick="@(()=>RemoveFromList(supportedPackagingTypes,@pkg))">@pkg</MudButton>
+                        }
+                    </div>
+                </div>
+            </MudExpansionPanel>
+
+            <MudExpansionPanel Text="Methods">
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <label for="MethodsAnswers">Supported methods</label>
+                        <div class="col-12 row">
+                            <CheckBoxList Data="@MethodsList"
+                                          TextField="@((item)=>item.Value)"
+                                          ValueField="@((item)=>item.Name)"
+                                          SelectedValues="@SelectedIds" />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-12">
+                        <MudSwitch Color="Color.Secondary" @bind-Checked=@(module.UseTryCatch) Size="Size.Small" Label="Use try catch in request/response mapping" />
+                    </div>
+                </div>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+
+        <div class="modal-footer">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnInitializedAsync" Class="mr-2">Clear All</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="GetModule">Generate</MudButton>
+        </div>
+    </form>
+</div>
+
+@code {
+    private List<string> supportedServices = new();
+    private List<string> supportedPackagingTypes = new();
+    private string? package, service, BASE_URL;
+    private ModuleDetail module = new();
+    private const string DEFAULT_FILE_NAME = "demo-module";
+
+    protected override async Task OnInitializedAsync()
+    {
+        supportedServices = new();
+        supportedPackagingTypes = new();
+        package = string.Empty;
+        service = string.Empty;
+        module = new();
+        SelectedIds = new();
+
+        BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
+    }
+
+    private async Task GetModule()
+    {
+        try
+        {
+            module.Methods = SelectedIds.ToArray();
+            module.Services = String.Join(",", supportedServices);
+            module.Packaging = String.Join(",", supportedPackagingTypes);
+
+            var response = await Http.PostAsJsonAsync(BASE_URL + "/module-generator/create", module);
+
+            var data = await response.Content.ReadAsByteArrayAsync();
+            await DownloadFileFromStream(GetFileStream(data), string.IsNullOrEmpty(module.FolderName) ? DEFAULT_FILE_NAME : module.FolderName);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Module generation failed", ex.Message);
+        }
+    }
+
+    private async void AddToList(List<string> list, string value)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(value) && !list.Contains(value))
+            {
+                list.Add(value);
+                if (service.Equals(value))
+                {
+                    service = string.Empty;
+                }
+                else
+                {
+                    package = string.Empty;
+                }
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected Error", ex.Message);
+
+        }
+    }
+
+    private async void RemoveFromList(List<string> list, string value)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(value) && list.Contains(value))
+            {
+                list.Remove(value);
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Unexpected Error", ex.Message);
+        }
+    }
+
+    private Stream GetFileStream(byte[] byteArray)
+    {
+        Stream stream = new MemoryStream(byteArray);
+
+        return stream;
+    }
+
+    private async Task DownloadFileFromStream(Stream fileStream, string fileName)
+    {
+        using var streamRef = new DotNetStreamReference(stream: fileStream);
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName + ".zip", streamRef);
+    }
+
+    public class ModuleDetail
+    {
+        public string? ApplicationType { get; set; }
+        public string? FolderName { get; set; }
+        public string? Name { get; set; }
+        public string? CarrierDescription { get; set; }
+        public bool UseTryCatch { get; set; }
+        public string? ClientWebSite { get; set; }
+        public string? TrackingUrl { get; set; }
+        public string? ApiUrl { get; set; }
+        public string? ApiType { get; set; }
+        public string[]? Methods { get; set; }
+        public string? Services { get; set; }
+        public string? Packaging { get; set; }
+    }
+
+}

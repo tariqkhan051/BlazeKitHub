@@ -15,7 +15,7 @@
         <div class="form-row">
             <div class="form-group col-md-12">
                 <label for="Name">Case Title</label>
-                <input type="text" class="form-control" required placeholder="The Delivery Group - Unable to choose between DDP and DDU" @bind:event="oninput" @bind="module.Title" />
+                <input type="text" class="form-control" required placeholder="BlazeKitHub - Revamp the user interface" @bind:event="oninput" @bind="module.Title" />
             </div>
 
         </div>
@@ -41,12 +41,12 @@
             </span>
             <div class="form-group col-md">
                 <label for="FolderName">Case URL</label>
-                <input type="text" class="form-control" placeholder="https://auctane.atlassian.net/browse/INTGP-280" @bind="module.URL" />
+                <input type="text" class="form-control" placeholder="https://atlassian.net/browse/feat-105" @bind="module.URL" />
             </div>
         </div>
         <div class="form-row">
             <div class="form-group col-md-2">
-                <button type="submit" class="btn btn-success" @onclick="GenerateBranchName" disabled="@IsDisabled">Generate</button>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GenerateBranchName" Disabled="@IsDisabled">Generate</MudButton>
             </div>
         </div>
     </form>
@@ -56,9 +56,7 @@
             <input type="text" class="form-control" readonly @bind="module.Result"/>
         </div>
         <div class="form-group col-md-1" style="align-self:center">
-            <button class="btn btn-sm btn-outline-secondary" id="copy-to-clipboard" onclick="@(() => CopyToClipboard(module.Result))" style="position: absolute; top: 0; right: 0;">
-                <span class="bi bi-clipboard-check" aria-hidden="true"> Copy</span>
-            </button>
+            <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Medium" id="copy-to-clipboard" OnClick="@(() => CopyToClipboard(module.Result))" style="position: absolute; top: 0; right: 5%;" />
         </div>
 
     </div>
@@ -88,7 +86,9 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary">Close</MudButton>
+
+                @* <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button> *@
             </div>
         </div>
     </div>
@@ -96,7 +96,7 @@
 
 @code {
     private ModuleDetail module = new();
-    static bool? IsDisabled { get; set; } = true;
+    static bool IsDisabled { get; set; } = true;
 
     private async Task GenerateBranchName()
     {

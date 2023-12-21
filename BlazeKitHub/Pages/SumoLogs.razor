@@ -46,7 +46,7 @@
                 <div class="row">
                     <div class="form-group col-md-12">
                         <label for="Name">Search Term</label>
-                        <button type="button" class="btn btn-success btn-sm" style="margin-top:2px" @onclick="@(()=>AddToList(addedScenarios, module?.UniqueName ?? string.Empty))"><i class="bi bi-plus"></i></button>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Style="margin-top:2px" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(addedScenarios, module?.UniqueName ?? string.Empty))" />
                         <input type="text" class="form-control" placeholder="18646" @bind:event="oninput" @bind="module.UniqueName" />
                     </div>
 
@@ -56,17 +56,6 @@
                         <label for="Platform">Resource</label>
                         <select id="Platform" class="form-control form-select" name="Type" @bind="module.Resource">
                             <option value="Select">-Select-</option>
-                            <option value="Register">Register</option>
-                            <option value="CreateLabel">CreateLabel</option>
-                            <option value="SchedulePickup">SchedulePickup</option>
-                            <option value="CancelPickup">CancelPickup</option>
-                            <option value="GetRates">GetRates</option>
-                            <option value="GetRelayPoints">GetRelayPoints</option>
-                            <option value="GetRelayPoint">GetRelayPoint</option>
-                            <option value="VoidLabels">VoidLabels</option>
-                            <option value="Track">Track</option>
-                            <option value="CreateManifest">CreateManifest</option>
-                            <option value="GetManifest">GetManifest</option>
                         </select>
                     </div>
                     <div class="form-group col-md-6">
@@ -89,7 +78,7 @@
                 </div>
                 <div class="row">
                     <div class="col-md-4">
-                        <button type="button" class="btn btn-success" @onclick="ShowAuthenticationModel">Get Logs</button>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ShowAuthenticationModel">Get Logs</MudButton>
                     </div>
                 </div>
             </div>
@@ -105,7 +94,9 @@
                         <ul>
                             @foreach (var value in addedScenarios.ToArray())
                             {
-                                <li style="list-style:none"><button class="btn btn-outline-danger btn-sm mr-1" style="border:none" @onclick="@(()=>RemoveFromList(addedScenarios, value))"><i class="bi bi-trash3"></i></button> @value</li>
+                                <li style="list-style:none">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(()=>RemoveFromList(addedScenarios, value))" />@value
+                                </li>
                             }
                         </ul>
                     </div>
@@ -115,7 +106,7 @@
     </form>
     <div class="form-row">
         <div class="form-group col-md-12">
-            <table id="logsTable" class="table">
+            <table id="logsTable" class="mud-table-container">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -134,7 +125,6 @@
                             <td>@(index + 1)</td>
                             <td>
                                 <span>@log.DateTime</span>
-                                @*<span>@(log.Enviornment ?? "")</span> <!-- add null coalescing operator to provide default value -->*@
                             </td>
                             <td style="max-height: 50px; overflow: auto; position: relative;">
                                 @if (log.Message is not null)
@@ -142,19 +132,21 @@
                                     <pre class="jsonview">
                                     <span title="@log.Message.ToString()" data-toggle="modal" data-target="#parsedMapModal@(index)">
                                             @log.Message.ToString().Substring(0, Math.Min(50, @log.Message.ToString().Length))<i class="bi bi-arrows-collapse"></i>
-                                                            </span>
-                                                            </pre>
-                                    <button class="btn btn-sm btn-outline-secondary" id="copy-to-clipboard" onclick="@(() => CopyToClipboard(log.Message.ToString()))" style="position: absolute; top: 0; right: 0;">
-                                        <span class="bi bi-clipboard-check" aria-hidden="true"></span> Copy to Clipboard
-                                    </button>
+                                                    </span>
+                                                    </pre>
+
+                                    <MudIconButton Icon="@Icons.Material.Filled.CopyAll" id="copy-to-clipboard" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyToClipboard(log.Message.ToString()))" Style="position: absolute; top: 0; right: 0;" />
+
                                     <div class="modal fade" id="parsedMapModal@(index)" tabindex="-1" role="dialog" aria-labelledby="parsedMapModalLabel@(index)" aria-hidden="true">
                                         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
+
                                                     <h5 class="modal-title" id="parsedMapModalLabel@(index)">Logs</h5>
-                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                        <span aria-hidden="true">&times;</span>
-                                                    </button>
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Variant="Variant.Filled" Color="Color.Primary" class="close" Size="Size.Small" />
+                                                    @*  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                            </button> *@
                                                 </div>
                                                 <div class="modal-body" style="height: 600px;overflow-y: scroll;">
                                                     <pre id="json-container" class="json-prettyprint" onchange="renderJSON(@log.Message)">@log.Message</pre>
@@ -176,7 +168,7 @@
     </div>
 </div>
 
-<div class="modal" tabindex="-1" role="dialog" style="display: @((showAuthenticationModel) ? "block" : "none")">
+<div class="modal" tabindex="-1" role="dialog" style="display: @((showAuthenticationModel) ? "block" : "none"); margin-top: 10%">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -188,7 +180,7 @@
             <div class="modal-body">
                 <form>
                     <div class="form-group">
-                        <label for="idInput">UserName:</label>
+                        <label for="idInput">Username:</label>
                         <input type="text" class="form-control" id="idInput" @bind="id">
                     </div>
                     <div class="form-group">
@@ -198,8 +190,10 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="HideAuthenticationModel">Close</button>
-                <button type="button" class="btn btn-primary" @onclick="Authenticate">Authenticate</button>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="HideAuthenticationModel" Class="mr-2">Close</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Authenticate">Authenticate</MudButton>
+
+                @* <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="HideAuthenticationModel">Close</button> *@
             </div>
         </div>
     </div>
@@ -224,21 +218,7 @@
     protected override void OnInitialized()
     {
         options = new List<string>()
-        {
-    "airtranss","amazon-buy-shipping","amazon-shipping-v2","amazon-shipping","angel-last-mile","another-module","anpost","apc-overnight","apc","apg-ecommerce","aramex","asendia-shipping-manifest-to-asendia","asendia","australia-post-mypost-business",
-    "australia-post-v2","axlehire","b2c-europe","better-trucks","boxberry","brt-it","canada-post","canadapost","canpar","carrier-oauth-demo","cdl-us","chronopost-v2","chronopost","colis-prive-store","colis-prive","colissimo","correos-spain",
-    "couriersplease","dai","delivengo","demo-carrier","demo-vice","deutsche-post-cross-border","deutsche-post-dhl","dhl-ecommerce-asia","dhl-ecommerce-au-v2","dhl-ecommerce-au","dhl-ecommerce-v4","dhl-parcel-uk","dhlecommerce","dhlexpress",
-    "direct-freight","direct-link","doordash","dpd-france","dpd-germany","dpd-hungary","dpd-romania","dpd-ireland","dpd-local","dpd-nl","dpd-portugal","dpd","dropoff","dummy-module","dx","ecms","envialia","epg","estafeta-mexico","estafeta","fairsenden",
-    "fan","fastway","fedex-mailview","fedex","ferrari","flashbox","freightways","geis-cz","global-e","globalaccess","globalpost","glocally","gls-ca","gls-france","gls-germany","gls-nl","gls-us","gophr","grupo-ampm","hermes-de","hermes",
-    "iabol","indyship","inpost-it","inpost","intelcom-ca","intelliquick","international-bridge","interpost","intersoft-royalmail","la-poste-chronopost","lasership","lettre-suivie","linex","loomis-express","lso","maersk-b2c","meest",
-    "mercado-libre-shipping","metroland","mng-kargo","mondial-relay-dc","mondial-relay","n9minutos","nationex","nb-post","nedpak","nightline","nippon-express","newgistics","new-zealand-post","nexive",
-    "nimbus-post","ni-post","ontime","ontrac","open-de","ott","packlink","palletways-de","palletways-uk",    "parcel-force",    "parcel2go",    "parcelled-in",    "parcelforce",    "parcelforce-rmg",    "pass-my-parcel",    "pca",    "pcg",    "peerpost",    "pfcexpress",    "pickupp",    "poczta-polska-pl",
-    "poczta-polska",    "posta-romana",    "postdanmark",    "poste-italiane",    "posten-norge",    "postnl",    "postnord",    "postnord-sweden",    "purolator-ca",    "q-logistics",    "quantium",    "qwintry",    "ram",    "ramgroup-italy",
-    "rcloud",    "roadie",    "russian-post",    "send24",    "sendcloud-own",    "sendcloud",    "sendex",    "sf-express",    "shippify",    "shippo",    "shipping-au",    "shipping-de",    "shipping-lv",    "shipping-merge",    "shipping-nl",
-    "shipping-pl",    "shipping",    "shiprocket",    "shipup",    "shoplogistics",    "sioli",    "skynetworldwide",    "smartmile",    "smsa-express",    "sovos",    "speedee",    "star-track-courier",    "star-track",    "stuart",    "t-force",
-    "t-cat",    "taiyou",    "tnt-france",    "tnt",    "topshipping",    "torque",    "tpk-logistics",    "tuffnells",    "uab-paslauga",    "ukrposhta",    "ups-freight",    "ups-mi",    "ups",    "usps",    "vamaship",    "vesuvio",    "viettel-post",
-    "viptela",    "vp-ship",    "wedelivertheworld",    "wefast",    "whistl",    "wn-direct",    "wpd","xdp-uk","xdp","xend",    "xparcel","yamato-jp","yamato-transport","yanwen","yodel","zigzag"
-};
+        {""};
         filteredOptions = options;
     }
 
@@ -447,7 +427,7 @@
     {
         if (!string.IsNullOrWhiteSpace(selectedOption) && !string.IsNullOrWhiteSpace(module.Environment))
         {
-            return $"kubernetes/shipping/{ConvertSpacesAndUnderscores(selectedOption)}/{module.Environment}/{ConvertSpacesAndUnderscores(selectedOption)}/{module.Environment}/deploy\\\"";
+            return $"kubernetes/{ConvertSpacesAndUnderscores(selectedOption)}/{module.Environment}/{ConvertSpacesAndUnderscores(selectedOption)}/{module.Environment}/deploy\\\"";
         }
 
         return string.Empty;
@@ -586,7 +566,7 @@
         return results;
     }
 
-    static string ConvertToDesiredFormat(string input )
+    static string ConvertToDesiredFormat(string input)
     {
         // Replace occurrences of "\\\"" with "\""
         input = input.Replace("\\\\\"", "\"");
@@ -668,35 +648,35 @@
             ""team"": ""mustangs"",
             ""user"": {
                 ""username"": ""mustangs"",
-                ""password"": ""dev786""
+                ""password"": """"
             }
         },
         {
             ""team"": ""sherlock"",
             ""user"": {
                 ""username"": ""sherlock"",
-                ""password"": ""dev144""
+                ""password"": """"
             }
         },
         {
             ""team"": ""cyborg"",
             ""user"": {
                 ""username"": ""cyborg"",
-                ""password"": ""dev999""
+                ""password"": """"
             }
         },
         {
             ""team"": ""daredevil"",
             ""user"": {
                 ""username"": ""daredevil"",
-                ""password"": ""dev921""
+                ""password"": """"
             }
         },
         {
             ""team"": ""falcons"",
             ""user"": {
                 ""username"": ""falcons"",
-                ""password"": ""dev020""
+                ""password"": """"
             }
         }
     ]";

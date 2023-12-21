@@ -9,7 +9,8 @@
 </div>
 <div class="modal-footer">
     <div id="cover-spin" style="display:none"></div>
-    <button type="button" class="btn btn-primary" @onclick="DownloadFileFromStream"><i class="bi bi-download"></i> Download</button>
+    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Rounded.Download" Color="Color.Primary" OnClick="DownloadFileFromStream">Download</MudButton>
+
 </div>
 
 @code {
@@ -36,7 +37,7 @@
         }
         catch (Exception e)
         {
-            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+            await JS.InvokeVoidAsync("errorModal", "An error occurred", e.Message);
         }
     }
 
@@ -56,7 +57,7 @@
         }
         catch (Exception e)
         {
-            await JS.InvokeVoidAsync("errorModal", "An error occured", e.Message);
+            await JS.InvokeVoidAsync("errorModal", "An error occurred", e.Message);
         }
     }
 }
