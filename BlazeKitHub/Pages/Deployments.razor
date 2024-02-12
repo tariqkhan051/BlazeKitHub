@@ -97,12 +97,15 @@
         </tbody>
     </table>
 </div>
+
 @code {
 
     [CascadingParameter] public IModalService Modal { get; set; } = default!;
+
+    private const string SampleDataFlagKey = "sample-data";
     private Deployment[]? deployments;
     private string? BASE_URL;
-    string filter = string.Empty;
+    private string filter = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,8 +127,38 @@
             }
         }
     }
+
     public List<string> checkBoxList { get; set; } = new List<string>();
 
+    /// <summary>
+    /// Get Information related to all deployments on server
+    /// </summary>
+    /// <returns></returns>
+    private async Task Info()
+    {
+        try
+        {
+            BASE_URL = Configuration.GetSection("urls")["DeploymentApi"];
+
+            bool showSampleData = Convert.ToBoolean(Configuration.GetSection(SampleDataFlagKey).Value);
+
+            if (showSampleData)
+            {
+                deployments = await Http.GetFromJsonAsync<Deployment[]>("sample-data.json");
+            }
+            else
+            {
+                deployments = await Http.GetFromJsonAsync<Deployment[]>(BASE_URL + "info");
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("errorModal", "Fetching Error!", ex.Message);
+        }
+    }
+    
+    
     private void CheckboxClicked(string? deploymentName, object checkedValue)
     {
         if ((bool)checkedValue)
@@ -292,7 +325,7 @@
             {
                 newDeployment.Name = _message.Name;
                 newDeployment.Status = string.Empty;
-                newDeployment.Port = string.Empty;
+                newDeployment.Port = 80;
                 newDeployment.Path = GetFormattedPath(_message.Path);
                 newDeployment.Team = _message.Team;
                 newDeployment.LogRequest = _message.LogRequest;
@@ -334,18 +367,6 @@
             return path;
         }
         return string.Empty;
-    }
-    private async Task Info()
-    {
-        try
-        {
-            BASE_URL = Configuration.GetSection("urls")["DeploymentApi"];
-            deployments = await Http.GetFromJsonAsync<Deployment[]>(BASE_URL + "info");
-        }
-        catch (Exception ex)
-        {
-            await JS.InvokeVoidAsync("errorModal", "Fetching Error!", ex.Message);
-        }
     }
 
     private async Task RefreshInstance(string deploymentName, string credentials)
@@ -623,7 +644,7 @@
 
         public string? Status { get; set; }
 
-        public string? Port { get; set; }
+        public int? Port { get; set; }
 
         public string? Path { get; set; }
 
