@@ -128,3 +128,22 @@ table td {
     color: #D8000C;
     background-color: #FFBABA;
 }*/
+
+.copy-popup {
+    position: absolute;
+    background-color: #4CAF50;
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+    z-index: 1;
+}
+
+@media (max-width: 576px) {
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .input-group-append {
+        margin-top: -15px; /* Adjust this value to fine-tune spacing */
+    }
+}

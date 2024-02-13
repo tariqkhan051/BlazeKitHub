@@ -19,37 +19,34 @@
     <form method="dialog">
         <div class="row">
             <div class="col-md-6">
-                <div class="row">
-                    <div class="form-group col-md-6">
-                        <label for="Name">Module Name</label>
-                        <input type="text" class="form-control" @bind="selectedOption" @oninput="HandleInput" />
+                <div class="form-group">
+                    <label for="Name">Module Name</label>
+                    <input type="text" class="form-control" @bind="selectedOption" @oninput="HandleInput" />
 
-                        <ul class="list-group" style="display: @(showOptions ? "block" : "none"); position: absolute;z-index: 9999;max-height: 200px;overflow-y: auto; ">
-                            @foreach (var option in filteredOptions)
-                            {
-                                <li class="list-group-item" style="background-color: white;" onmouseover="this.style.backgroundColor='grey';" onmouseout="this.style.backgroundColor='white';" @onclick="() => SelectOption(option)">@option</li>
-                            }
-                        </ul>
-
-                    </div>
-                    <div class="form-group col-md-6">
-                        <label for="Environment">Environment*</label>
-                        <select id="Environment" class="form-control form-select" name="Type" @bind="module.Environment">
-                            <option value="Select">-Select-</option>
-                            <option value="dev">Dev</option>
-                            <option value="stage">Staging</option>
-                            <option value="prod">Production</option>
-                        </select>
-                    </div>
-
+                    <ul class="list-group" style="display: @(showOptions ? "block" : "none"); position: absolute;z-index: 9999;max-height: 200px;overflow-y: auto; ">
+                        @foreach (var option in filteredOptions)
+                        {
+                            <li class="list-group-item" style="background-color: white;" onmouseover="this.style.backgroundColor='grey';" onmouseout="this.style.backgroundColor='white';" @onclick="() => SelectOption(option)">@option</li>
+                        }
+                    </ul>
                 </div>
-                <div class="row">
-                    <div class="form-group col-md-12">
-                        <label for="Name">Search Term</label>
-                        <MudIconButton Icon="@Icons.Material.Filled.Add" Style="margin-top:2px" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(addedScenarios, module?.UniqueName ?? string.Empty))" />
+                <div class="form-group">
+                    <label for="Environment">Environment*</label>
+                    <select id="Environment" class="form-control form-select" name="Type" @bind="module.Environment">
+                        <option value="Select">-Select-</option>
+                        <option value="dev">Dev</option>
+                        <option value="stage">Staging</option>
+                        <option value="prod">Production</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="Name">Search Term</label>
+                    <div class="input-group">
                         <input type="text" class="form-control" placeholder="18646" @bind:event="oninput" @bind="module.UniqueName" />
+                        <div style="display:flex">
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(()=>AddToList(addedScenarios, module?.UniqueName ?? string.Empty))" />
+                        </div>
                     </div>
-
                 </div>
                 <div class="row">
                     <div class="form-group col-md-6">
@@ -77,30 +74,33 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-12">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ShowAuthenticationModel">Get Logs</MudButton>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="row">
+                <div class="form-group">
                     <label for="Name">Query</label>
                     <textarea class="form-control" style="height:120px; resize: none; font-size: 12px;" readonly @bind="module.Result"> </textarea>
                 </div>
 
-                <div class="row">
-                    <label for="SearchTerm">Search Term(s) added</label>
-                    <div style="height:250px; overflow-y: scroll; overflow-x:scroll;">
-                        <ul>
-                            @foreach (var value in addedScenarios.ToArray())
-                            {
-                                <li style="list-style:none">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(()=>RemoveFromList(addedScenarios, value))" />@value
-                                </li>
-                            }
-                        </ul>
+                @if (addedScenarios.Any())
+                {
+                    <div class="form-group">
+                        <label for="SearchTerm">Search Term(s) added</label>
+                        <div style="height:250px; overflow-y: scroll;">
+                            <ul>
+                                @foreach (var value in addedScenarios.ToArray())
+                                {
+                                    <li style="list-style:none">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(()=>RemoveFromList(addedScenarios, value))" />@value
+                                    </li>
+                                }
+                            </ul>
+                        </div>
                     </div>
-                </div>
+                }
             </div>
         </div>
     </form>
@@ -132,8 +132,8 @@
                                     <pre class="jsonview">
                                     <span title="@log.Message.ToString()" data-toggle="modal" data-target="#parsedMapModal@(index)">
                                             @log.Message.ToString().Substring(0, Math.Min(50, @log.Message.ToString().Length))<i class="bi bi-arrows-collapse"></i>
-                                                    </span>
-                                                    </pre>
+                                                </span>
+                                            </pre>
 
                                     <MudIconButton Icon="@Icons.Material.Filled.CopyAll" id="copy-to-clipboard" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyToClipboard(log.Message.ToString()))" Style="position: absolute; top: 0; right: 0;" />
 
@@ -141,12 +141,8 @@
                                         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header">
-
                                                     <h5 class="modal-title" id="parsedMapModalLabel@(index)">Logs</h5>
                                                     <MudIconButton Icon="@Icons.Material.Filled.Close" Variant="Variant.Filled" Color="Color.Primary" class="close" Size="Size.Small" />
-                                                    @*  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                            </button> *@
                                                 </div>
                                                 <div class="modal-body" style="height: 600px;overflow-y: scroll;">
                                                     <pre id="json-container" class="json-prettyprint" onchange="renderJSON(@log.Message)">@log.Message</pre>
@@ -192,8 +188,6 @@
             <div class="modal-footer">
                 <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="HideAuthenticationModel" Class="mr-2">Close</MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Authenticate">Authenticate</MudButton>
-
-                @* <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="HideAuthenticationModel">Close</button> *@
             </div>
         </div>
     </div>
@@ -273,28 +267,37 @@
             return;
         }
 
-        List<TeamData> teamData = JsonConvert.DeserializeObject<List<TeamData>>(json);
-        User team = teamData.FirstOrDefault(t => t.team == id).user;
+        var configSection = Configuration.GetSection("sumo-logs-credentials");
 
-        if (id == team.username && pass == team.password)
+        //only validate if credentials are setup
+        if (configSection != null)
         {
-            HideAuthenticationModel();
-            await JS.InvokeVoidAsync("showLoader");
-            List<string> Quries = GenerateQuery();
-            if (Quries.Count > 1)
+            List<TeamData> teams_credentials = configSection.Get<List<TeamData>>();
+            
+            if (teams_credentials != null)
             {
-                await GetResults(Quries[0], Quries[1], id);
+                var selected_team = teams_credentials.FirstOrDefault(t => t.team == id);
+
+                if (selected_team != null && (id != selected_team.user?.username || pass != selected_team.user?.password))
+                {
+                    await JS.InvokeVoidAsync("errorModal", "Invalid Credentials.");
+                    return;
+                }
             }
-            else
-            {
-                await GetResults(Quries[0], "", id);
-            }
-            await JS.InvokeVoidAsync("hideLoader");
+        }
+        
+        HideAuthenticationModel();
+        await JS.InvokeVoidAsync("showLoader");
+        List<string> Quries = GenerateQuery();
+        if (Quries.Count > 1)
+        {
+            await GetResults(Quries[0], Quries[1], id);
         }
         else
         {
-            await JS.InvokeVoidAsync("errorModal", "Invalid Credentials.");
+            await GetResults(Quries[0], "", id);
         }
+        await JS.InvokeVoidAsync("hideLoader");
     }
 
     private async void AddToList(List<string> list, string val)
@@ -642,42 +645,4 @@
         public string team { get; set; }
         public User user { get; set; }
     }
-
-    private string json = @"[
-        {
-            ""team"": ""mustangs"",
-            ""user"": {
-                ""username"": ""mustangs"",
-                ""password"": """"
-            }
-        },
-        {
-            ""team"": ""sherlock"",
-            ""user"": {
-                ""username"": ""sherlock"",
-                ""password"": """"
-            }
-        },
-        {
-            ""team"": ""cyborg"",
-            ""user"": {
-                ""username"": ""cyborg"",
-                ""password"": """"
-            }
-        },
-        {
-            ""team"": ""daredevil"",
-            ""user"": {
-                ""username"": ""daredevil"",
-                ""password"": """"
-            }
-        },
-        {
-            ""team"": ""falcons"",
-            ""user"": {
-                ""username"": ""falcons"",
-                ""password"": """"
-            }
-        }
-    ]";
 }

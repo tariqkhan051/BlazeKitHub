@@ -1,9 +1,17 @@
-﻿<MudNavMenu Color="Color.Primary" Bordered="true" Margin="Margin.Normal">
-    @foreach (var link in GetNavigationLinks())
-    {
-        <MudNavLink Href="@link.Href" Match="@link.Match" Icon="@link.Icon" Style="py-5">@link.Text</MudNavLink>
-    }
-</MudNavMenu>
+﻿<div style="display: flex; flex-direction: column; height: 100vh;">
+    <div style="flex: 1;">
+        <MudNavMenu Color="Color.Primary" Bordered="true" Margin="Margin.Normal">
+            @foreach (var link in GetNavigationLinks())
+            {
+                <MudNavLink Href="@link.Href" Match="@link.Match" Icon="@link.Icon" Style="py-5">@link.Text</MudNavLink>
+            }
+        </MudNavMenu>
+    </div>
+    <div style="flex-shrink: 0;">
+        <MudNavLink Style="py-5;" Disabled>Version 1.0.0</MudNavLink>
+    </div>
+</div>
+
 
 @code {
     private List<NavLinkInfo> GetNavigationLinks()
