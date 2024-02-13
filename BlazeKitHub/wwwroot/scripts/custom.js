@@ -44,3 +44,21 @@
 
     document.body.appendChild(container);
 }
+
+function copyPassword(inputField, password) {
+    var tempInput = document.createElement("input");
+    tempInput.value = password;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    document.body.removeChild(tempInput);
+
+    // Show a small popup message above the input field
+    var popup = document.createElement("div");
+    popup.className = "copy-popup";
+    popup.textContent = "Password copied to clipboard";
+    inputField.parentNode.insertBefore(popup, inputField.nextSibling);
+    setTimeout(function () {
+        popup.parentNode.removeChild(popup);
+    }, 2000); // Remove the popup after 2 seconds
+}

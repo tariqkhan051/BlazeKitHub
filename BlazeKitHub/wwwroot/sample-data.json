@@ -7,10 +7,24 @@
     "team": "team-black"
   },
   {
+    "name": "my-app-1",
+    "status": "stopped",
+    "port": 57519,
+    "path": "my-server/path/to/my/app/1",
+    "team": "team-white"
+  },
+  {
     "name": "my-app-2",
     "status": "stopped",
-    "port": 57517,
+    "port": 55501,
     "path": "my-server/path/to/my/app/2",
+    "team": "team-white"
+  },
+  {
+    "name": "my-app-3",
+    "status": "running",
+    "port": 57327,
+    "path": "my-server/path/to/my/app/3",
     "team": "team-white"
   }
 ]

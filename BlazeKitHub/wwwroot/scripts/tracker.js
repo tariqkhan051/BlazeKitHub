@@ -6,9 +6,9 @@
 };
 
 function DisplayIP(response) {
-    var dispIpElem = document.getElementById("text");
+    var dispIpElem = document.getElementById("user-public-ip-address");
     if (dispIpElem != null) {
-        dispIpElem.innerHTML = "IP Address : " + response.ip;
+        dispIpElem.innerHTML = response.ip;
     }
 }
 
