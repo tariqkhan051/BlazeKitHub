@@ -130,12 +130,16 @@ table td {
 }*/
 
 .copy-popup {
-    position: absolute;
-    background-color: #4CAF50;
-    color: white;
-    padding: 8px;
-    border-radius: 6px;
-    z-index: 1;
+    position: fixed;
+    top: 50px; /* Adjust top position as needed */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 9999; /* Ensure it's on top of other elements */
 }
 
 @media (max-width: 576px) {
