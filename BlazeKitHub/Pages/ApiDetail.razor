@@ -8,81 +8,57 @@
 
 <h3>API Details</h3>
 
-@if (infoData == null)
+@if (!string.IsNullOrEmpty(apiDetailToShow))
 {
-    <p>Loading...</p>
+    <ApiInfo InfoFile=@apiDetailToShow></ApiInfo>
+    <div align="right"><MudButton Variant="Variant.Filled" Color="Color.Primary" Style="margin-top:5px" OnClick="@(() => apiDetailToShow = string.Empty)">Back</MudButton></div>
 }
 else
 {
-    <div class="modal-body">
-        @if (!string.IsNullOrEmpty(apiDetailToShow))
-        {
-            <ApiInfo InfoFile=@apiDetailToShow></ApiInfo>
-            <div align="right"><MudButton Variant="Variant.Filled" Color="Color.Primary" Style="margin-top:5px" OnClick="@(() => apiDetailToShow = string.Empty)">Back</MudButton></div>
-        }
-        else
-        {
-            <div>
-                <table class="mud-table-container" id="deploymentTable">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th style="text-align:center">Status</th>
-                            <th>Details</th>
-                            <th style="text-align:center">Info</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var data in infoData)
-                        {
-                            <tr>
-                                @switch (data.Name)
-                                {
-                                    case "samples-generator":
-                                        urlValue = @SAMPLES_GENERATOR_URL;
-                                        break;
-                                    case "address-generator":
-                                        urlValue = @ADDRESS_GENERATOR_URL;
-                                        break;
-                                    case "code-generator":
-                                        urlValue = CODE_GENERATOR_URL;
-                                        break;
-                                    case "performance-calculator":
-                                        urlValue = @PERF_URL;
-                                        break;
-                                    case "sumo-logic-api":
-                                        urlValue = SUMO_LOGIC_URL;
-                                        break;
-                                    default:
-                                        urlValue = string.Empty;
-                                        break;
-                                }
-                                <td><MudLink Href=@urlValue title=@urlValue target=" _blank">@data.Name</MudLink></td>
-                                @if (data.Status == "Active")
-                                {
-                                    <td style="text-align:center"><MudIcon Icon="@Icons.Material.Rounded.CheckCircle" Color="Color.Success" /></td>
-                                }
-                                else
-                                {
-                                    <td style="text-align:center"><MudIcon Icon="@Icons.Material.Rounded.RemoveCircle" Color="Color.Error" /></td>
-                                }
-                                <td>@data.Details</td>
-                                <td style="text-align:center">
-                                    <MudIconButton Icon="@Icons.Material.Rounded.Info" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => apiDetailToShow = @data.Name)" />
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-    </div>
+    <MudTable Loading="@(infoData == null)" LoadingProgressColor="Color.Info"
+              Items="@infoData" Striped="true" Filter="new Func<APIDetail, bool>(FilterFunc1)"
+              @bind-SelectedItem="selectedItem1">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">APIs Details</MudText>
+            <MudSpacer />
+            <MudTextField @bind-Value="searchString1" Placeholder="Search"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                          Class="mt-0"></MudTextField>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Details</MudTh>
+            <MudTh>Info</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Name">
+                <MudLink Href=@GetUrlValue(context.Name) title=@GetUrlValue(context.Name) target="_blank">
+                    @context.Name
+                </MudLink>
+            </MudTd>
+            <MudTd DataLabel="Sign">
+                <MudIcon Icon="@(IsStatusActive(context.Status) ? @Icons.Material.Rounded.CheckCircle : @Icons.Material.Rounded.RemoveCircle)"
+                         Color="(IsStatusActive(context.Status) ? Color.Success : Color.Error)" />
+            </MudTd>
+            <MudTd DataLabel="Details">@context.Details</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Info" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="@(() => apiDetailToShow = context.Name)" />
+                </MudTd>
+            </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
 }
 
 @code {
     private APIDetail[]? infoData;
     private string? BASE_URL, PERF_URL, ADDRESS_GENERATOR_URL, CODE_GENERATOR_URL, SAMPLES_GENERATOR_URL, SUMO_LOGIC_URL;
     private string urlValue = string.Empty, apiDetailToShow = string.Empty;
+    private string searchString1 = string.Empty;
+    private APIDetail selectedItem1 = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,6 +82,48 @@ else
     {
         BASE_URL = Configuration.GetSection("urls")["BlazeKitHubApi"];
         infoData = await Http.GetFromJsonAsync<APIDetail[]>(BASE_URL + "/info");
+    }
+
+    private bool IsStatusActive(string status)
+    {
+        return status == "Active";
+    }
+    private string GetUrlValue(string apiName)
+    {
+        switch (apiName)
+        {
+            case "samples-generator":
+                urlValue = SAMPLES_GENERATOR_URL;
+                break;
+            case "address-generator":
+                urlValue = ADDRESS_GENERATOR_URL;
+                break;
+            case "code-generator":
+                urlValue = CODE_GENERATOR_URL;
+                break;
+            case "performance-calculator":
+                urlValue = PERF_URL;
+                break;
+            case "sumo-logic-api":
+                urlValue = SUMO_LOGIC_URL;
+                break;
+            default:
+                urlValue = string.Empty;
+                break;
+        }
+
+        return urlValue;
+    }
+    private bool FilterFunc1(APIDetail element) => FilterFunc(element, searchString1);
+    private bool FilterFunc(APIDetail element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (element.Details.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
     }
 
     public class APIDetail

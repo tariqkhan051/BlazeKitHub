@@ -1,13 +1,20 @@
 ﻿@page "/deployments"
 @using System.Text
 @using System.ComponentModel.DataAnnotations
+@using BlazeKitHub.Components.Dialogs
+@using BlazeKitHub.Services
 @using Newtonsoft.Json
 @using Newtonsoft.Json.Linq
 @using System.Threading;
+@using static BlazeKitHub.Components.Dialogs.AuthorizationDialog
+
 @inject IConfiguration Configuration
 @inject NavigationManager uriHelper;
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject IErrorDialogService ErrorDialogService
+
 <PageTitle>Deployments</PageTitle>
 
 <h3>Deployments</h3>
@@ -17,95 +24,109 @@
         <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(e => ShowAuthenticationModal("", "start-multiple"))">Start Multiple Instance</MudButton>
     </div>
 </div>
-<div id="cover-spin" style="display:none"></div>
-<div>
-    @if (@checkBoxList.Count > 0)
-    {
-        <p>Selected: @checkBoxList.Count row(s)</p>
-    }
-</div>
-<div>
-    <table id="deploymentTable" class="mud-table-container">
-        <thead>
-            <tr>
-                <th><input id="selectAll" name="checkbox" @onchange="eventArgs => { CheckboxAllClicked(eventArgs.Value); }" type="checkbox" onclick="checkUncheck()" /></th>
-                <th>Name</th>
-                <th>Status</th>
-                <th style="display:none;"></th>
-                <th class="path-table">Path</th>
-                <th>Team</th>
-                <th style="width:80px">Split Logs</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (deployments != null)
-            {
-                @foreach (var deployment in deployments.OrderBy(x => x.Team).ToList())
-                {
-                    <tr>
-                        <td><input type="checkbox" name="checkbox" @onchange="eventArgs => { CheckboxClicked(deployment?.Name, eventArgs.Value); }" id="addition" value="@deployment?.Name" /></td>
-                        <td><a href=@(BASE_URL + deployment?.Name) target=”_blank” title="@(BASE_URL + deployment?.Name)">@deployment?.Name</a></td>
-                        @if (deployment?.Status == "started")
-                        {
-                            <td style="display:none;">1</td>
-                            <td style="text-align:center"><i title="Active" class="fas fa-check-circle" style="color: green;" /></td>
-                        }
-                        else
-                        {
-                            <td style="display:none;">0</td>
-                            <td style="text-align:center"><i title="Inactive" class="far fa-times-circle" style="color: red;" /></td>
-                        }
-                        <td>@deployment?.Path</td>
-                        <td style="width: 100px;">@deployment?.Team</td>
-                        @if (deployment?.LogRequest?.ToString()?.ToLower() == "true")
-                        {
-                            <td style="text-align:center"><i title="Yes" class="fas fa-check-circle" style="color: green;" /></td>
-                        }
-                        else
-                        {
-                            <td style="text-align:center"><i title="No" class="far fa-times-circle" style="color: red;" /></td>
-                        }
-                        <td>
-                            <div class="btn-group">
-                                @if (deployment?.Status == "started")
-                                {
-                                    <button type="button" class="btn btn-primary" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "refresh"))"><i title="Refresh Instance" class="bi bi-arrow-clockwise"></i></button>
-                                }
-                                else
-                                {
-                                    <button type="button" class="btn btn-primary" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "refresh"))" disabled><i title="Refresh Deployment" class="bi bi-arrow-clockwise"></i></button>
-                                }
-                                <button type="button" class="btn btn-dark" @onclick="(() => ModuleInfo(deployment?.Name))"><i title="Get Updated info" class="fa fa-arrow-up"></i></button>
-                                @if (deployment?.Status == "started")
-                                {
-                                    <button type="button" class="btn btn-success" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "start"))" disabled><i title="Already started" class="bi bi-play-fill"></i></button>
-                                    <button type="button" class="btn btn-dark" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "stop"))"><i title="Stop Deployment" class="bi bi-stop-fill"></i></button>
-                                }
-                                else
-                                {
-                                    <button type="button" class="btn btn-success" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "start"))"><i title="Start Deployment" class="bi bi-play-fill"></i></button>
-                                    <button type="button" class="btn btn-dark" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "stop"))" disabled><i title="Already stop" class="bi bi-stop-fill"></i></button>
-                                }
-                                <button type="button" class="btn btn-danger" @onclick="@(e => ShowAuthenticationModal(deployment?.Name, "unregister"))"><i title="Delete Deployment" class="bi bi-trash3-fill"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                }
-            }
 
-        </tbody>
-    </table>
-</div>
+<MudOverlay Visible="isVisible" DarkBackground="true" Absolute="true">
+    <MudProgressCircular Color="Color.Secondary" Indeterminate="true" />
+</MudOverlay>
 
-@code {
+<MudText>Selected items (@selectedItems?.Count)</MudText>
+    <div>
+        <MudTable Loading="@(deployments == null)" LoadingProgressColor="Color.Info" @ref="_table" T="Deployment" Items="@deployments" MultiSelection="true" @bind-SelectedItems="selectedItems" Hover="true"
+                  Dense="true" Striped="true" Filter="new Func<Deployment,bool>(FilterFunc1)">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Deployments</MudText>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString1" Placeholder="Search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium" Class="mt-0"></MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Path</MudTh>
+                <MudTh>Team</MudTh>
+                <MudTh>Split Logs</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">
+                    <MudLink href=@(BASE_URL + context?.Name) target=”_blank” title="@(BASE_URL + context?.Name)">
+                        @context?.Name
+                </MudLink>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudIcon Title="@DeploymentStatus(context.LogRequest)"
+                         Icon="@(IsDeploymentRunning(context.Status) ? Icons.Material.Rounded.CheckCircle : Icons.Material.Rounded.ErrorOutline)"
+                         Color="(IsDeploymentRunning(context.Status) ? Color.Success : Color.Error)" />
+            </MudTd>
+            <MudTd DataLabel="Path">@context.Path</MudTd>
+                <MudTd DataLabel="Team">@context.Team</MudTd>
+                <MudTd DataLabel="Split Logs">
+                    <MudIcon Title="@LogRequestTitle(context.LogRequest)"
+                             Icon="@(LogRequestEnabled(context.LogRequest) ? Icons.Material.Rounded.CheckCircle : Icons.Material.Rounded.ErrorOutline)"
+                             Color="(LogRequestEnabled(context.LogRequest) ? Color.Success : Color.Error)" />
+                </MudTd>
+                <MudTd>
+                    <MudButtonGroup Variant="Variant.Filled">
+                        <MudIconButton Title="Refresh"
+                                       Icon="@Icons.Material.Filled.Refresh"
+                                       Color="Color.Info"
+                                       Size="Size.Small"
+                                       Disabled="IsDeploymentRunning(context.Status)"
+                                       OnClick="@(() => ShowAuthenticationModal(context?.Name, "refresh"))" />
+
+                        <MudIconButton Title="Get Updated Info"
+                                       Icon="@Icons.Material.Filled.Update"
+                                       Color="Color.Dark"
+                                       Size="Size.Small"
+                                       Disabled="IsDeploymentRunning(context.Status)"
+                                       OnClick="@(() => ShowAuthenticationModal(context?.Name, "refresh"))" />
+
+                        <MudIconButton Title="@(IsDeploymentRunning(context.Status) ? AlreadyStarted : StartDeployment)"
+                                       Icon="@Icons.Material.Filled.Start"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Disabled="IsDeploymentRunning(context.Status)"
+                                       OnClick="@(() => ShowAuthenticationModal(context?.Name, "start"))" />
+
+                        <MudIconButton Title="Stop"
+                                       Icon="@Icons.Material.Filled.Stop"
+                                       Color="Color.Secondary"
+                                       Size="Size.Small"
+                                       Disabled="!IsDeploymentRunning(context.Status)"
+                                       OnClick="@(() => ShowAuthenticationModal(context?.Name, "stop"))" />
+
+
+                        <MudIconButton Title="Delete"
+                                       Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       Disabled="IsDeploymentRunning(context.Status)"
+                                       OnClick="@(() => DeleteDeployment(context))" />
+                    </MudButtonGroup>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </div>
+
+    @code {
 
     [CascadingParameter] public IModalService Modal { get; set; } = default!;
 
     private const string SampleDataFlagKey = "sample-data";
-    private Deployment[]? deployments;
+    private const string AlreadyStarted = "Already running";
+    private const string StartDeployment = "Start";
     private string? BASE_URL;
     private string filter = string.Empty;
+    private string searchString1 = string.Empty;
+    private bool isVisible;
+    private MudTable<Deployment>? _table;
+    private Deployment? selectedItem1;
+    private HashSet<Deployment> selectedItems = new HashSet<Deployment>();
+    private List<Deployment>? deployments;
 
     protected override async Task OnInitializedAsync()
     {
@@ -128,8 +149,6 @@
         }
     }
 
-    public List<string> checkBoxList { get; set; } = new List<string>();
-
     /// <summary>
     /// Get Information related to all deployments on server
     /// </summary>
@@ -144,11 +163,11 @@
 
             if (showSampleData)
             {
-                deployments = await Http.GetFromJsonAsync<Deployment[]>("sample-data.json");
+                deployments = await Http.GetFromJsonAsync<List<Deployment>>("sample-data.json");
             }
             else
             {
-                deployments = await Http.GetFromJsonAsync<Deployment[]>(BASE_URL + "info");
+                deployments = await Http.GetFromJsonAsync<List<Deployment>>(BASE_URL + "info");
             }
 
         }
@@ -158,72 +177,11 @@
         }
     }
 
-
-    private void CheckboxClicked(string? deploymentName, object checkedValue)
-    {
-        if ((bool)checkedValue)
-        {
-            if (!string.IsNullOrWhiteSpace(deploymentName) && !checkBoxList.Contains(deploymentName))
-            {
-                checkBoxList.Add(deploymentName);
-            }
-        }
-        else
-        {
-            if (!string.IsNullOrWhiteSpace(deploymentName) && checkBoxList.Contains(deploymentName))
-            {
-                checkBoxList.Remove(deploymentName);
-            }
-        }
-        StateHasChanged();
-    }
-
-    private async void CheckboxAllClicked(object checkedValue)
-    {
-        if (deployments != null)
-        {
-            if ((bool)checkedValue)
-            {
-                filter = await JS.InvokeAsync<string>("getFilteredValue");
-
-                if (!string.IsNullOrEmpty(filter))
-                {
-                    foreach (var dep in deployments)
-                    {
-                        if (
-                            (dep != null && dep.Name.Contains(filter) || dep.Team.Contains(filter) || dep.Path.Contains(filter))
-                            && !string.IsNullOrWhiteSpace(dep.Name) && !checkBoxList.Contains(dep.Name)
-                        )
-                        {
-                            checkBoxList.Add(dep.Name);
-                        }
-                    }
-                    filter = string.Empty;
-                }
-                else
-                {
-                    foreach (var dep in deployments)
-                    {
-                        if (!string.IsNullOrWhiteSpace(dep.Name))
-                        {
-                            checkBoxList.Add(dep.Name);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                checkBoxList.RemoveRange(0, checkBoxList.Count);
-            }
-            StateHasChanged();
-        }
-    }
-
     private string[] GetDeploymentNames(string[] deploymentNames)
     {
-        for (var i = 0; i < checkBoxList.Count; i++)
+        for (var i = 0; i < selectedItems.Count; i++)
         {
-            deploymentNames[i] = checkBoxList[i];
+            deploymentNames[i] = selectedItems.ElementAt(i).Name;
         }
         deploymentNames = deploymentNames.Where(c => c != null).ToArray();
 
@@ -231,11 +189,27 @@
 
     }
 
+    private async Task DeleteDeployment(Deployment deployment)
+    {
+        var dialog = await DialogService.ShowAsync<AuthorizationDialog>("Authorization");
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var data = (AuthorizationForm)result.Data;
+
+            if (data != null)
+            {
+                UnRegister(deployment.Name ?? string.Empty, $"{data.Username}:{data.Password}");
+            }
+        }
+    }
+
     private async Task ShowAuthenticationModal(string? deploymentName, string methodName)
     {
         if (deployments != null)
         {
-            string[] deploymentNames = new string[deployments.Length];
+            string[] deploymentNames = new string[deployments.Count];
             deploymentNames = GetDeploymentNames(deploymentNames);
             var isStartMultiple = methodName == "start-multiple" ? true : false;
 
@@ -249,7 +223,7 @@
             }
             else
             {
-                var deploymentModal = Modal.Show<AuthModal>("Authorization", GetModalOptions());
+                var deploymentModal = Modal.Show<AuthModal>("Authorization");
                 var result = await deploymentModal.Result;
 
                 try
@@ -260,6 +234,7 @@
                         dynamic _message = result?.Data != null ? result.Data : obj;
                         var credentials = $"{_message?.Username}:{_message?.Password}";
 
+                        isVisible = true;
                         if (methodName == "start")
                         {
                             await Start(deploymentName ?? "", credentials, true, false);
@@ -290,6 +265,8 @@
                 {
                     deploymentModal = null;
                     result = null;
+                    isVisible = false;
+                    StateHasChanged();
                 }
             }
         }
@@ -297,25 +274,11 @@
         {
             await JS.InvokeVoidAsync("errorModal", "Instance Not Found!", "Instance not found.");
         }
-
-
-    }
-
-    private ModalOptions GetModalOptions()
-    {
-        return new ModalOptions()
-            {
-                HideCloseButton = false,
-                HideHeader = false,
-                DisableBackgroundCancel = true,
-                ActivateFocusTrap = false,
-                Position = ModalPosition.Middle
-            };
     }
 
     private async Task ShowAddDeploymentModal()
     {
-        var deploymentModal = Modal.Show<DeploymentModal>("Add Deployment", GetModalOptions());
+        var deploymentModal = Modal.Show<DeploymentModal>("Add Deployment");
         var result = await deploymentModal.Result;
 
         try
@@ -343,10 +306,10 @@
                     else
                     {
                         Register(newDeployment, credentials, true);
-                    }     
-                }   
+                    }
+                }
             }
-            
+
         }
         catch (Exception ex)
         {
@@ -357,7 +320,7 @@
             deploymentModal.Close();
         }
     }
-    
+
     private string GetFormattedPath(string path)
     {
         if (!string.IsNullOrWhiteSpace(path))
@@ -386,7 +349,7 @@
             await JS.InvokeVoidAsync("errorModal", "Instance cannot Refreshed!", ex.Message);
         }
     }
-    
+
     private async Task ModuleInfo(string? deploymentName)
     {
         var endpoint = BASE_URL + deploymentName + "/info";
@@ -395,7 +358,7 @@
         {
             newDeployment = await Http.GetFromJsonAsync<Deployment[]>(endpoint);
 
-            for (var i = 0; i < deployments?.Length; i++)
+            for (var i = 0; i < deployments?.Count; i++)
             {
                 if (deployments[i]?.Name == deploymentName && newDeployment != null)
                 {
@@ -411,12 +374,12 @@
             await JS.InvokeVoidAsync("errorModal", "Instance Info!", ex.Message);
         }
     }
-    
+
     private int GetDeploymentNameIndex(string deploymentName)
     {
         var deploymentNameIndex = -1;
 
-        for (var i = 0; i < deployments?.Length; i++)
+        for (var i = 0; i < deployments?.Count; i++)
         {
             if (deployments[i]?.Name?.ToLower() == deploymentName?.ToLower())
             {
@@ -427,7 +390,7 @@
 
         return deploymentNameIndex;
     }
-    
+
     private async Task Start(string deploymentName, string credentials, bool IsStartOnly, bool isRefresh)
     {
         try
@@ -436,7 +399,7 @@
             await Info();
             var index = GetDeploymentNameIndex(deploymentName);
 
-            if (deployments?.Length > 0 && index >= 0)
+            if (deployments?.Count > 0 && index >= 0)
             {
                 var client = new HttpClient();
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue
@@ -480,7 +443,7 @@
 
         }
     }
-    
+
     private string GetResponseMessage(string responseString)
     {
         if (!string.IsNullOrWhiteSpace(responseString))
@@ -491,7 +454,7 @@
         }
         return "";
     }
-    
+
     private async void StartMultiple(string[] DeploymentNames, string credentials)
     {
         try
@@ -507,7 +470,7 @@
 
             if (response.IsSuccessStatusCode && !string.IsNullOrWhiteSpace(responseMessage) && responseMessage == "starting modules list...")
             {
-                await JS.InvokeVoidAsync("successModal", "Started", checkBoxList.Count);
+                await JS.InvokeVoidAsync("successModal", "Started", selectedItems.Count);
                 await Info();
                 StateHasChanged();
             }
@@ -520,19 +483,14 @@
         {
             await JS.InvokeVoidAsync("errorModal", "Instance not started", ex.Message);
         }
-        finally
-        {
-            await JS.InvokeVoidAsync("uncheckCheckboxes");
-            checkBoxList.Clear();
-        }
     }
-    
+
     private async Task Stop(string deploymentName, string credentials, bool isRefresh)
     {
         var endpoint = BASE_URL + deploymentName + "/stop";
         var index = GetDeploymentNameIndex(deploymentName);
 
-        if (deployments?.Length > 0 && index >= 0)
+        if (deployments?.Count > 0 && index >= 0)
         {
             try
             {
@@ -565,13 +523,13 @@
         }
 
     }
-    
+
     private static string ConvertToBase64String(string credentials)
     {
         var byteArray = Encoding.ASCII.GetBytes(credentials);
         return Convert.ToBase64String(byteArray);
     }
-    
+
     private async void Register(Deployment deployment, string credentials, bool isRegisterStart)
     {
         var endpoint = BASE_URL + "register";
@@ -610,13 +568,15 @@
             await JS.InvokeVoidAsync("errorModal", "Instance not registered!", ex.Message);
         }
     }
-    
+
     private async void UnRegister(string deploymentName, string credentials)
     {
         var endpoint = BASE_URL + "unregister";
 
         try
         {
+            isVisible = true;
+
             UnregisterDeployment dep = new UnregisterDeployment();
             dep.Name = deploymentName;
             var client = new HttpClient();
@@ -637,20 +597,56 @@
             }
             else
             {
-                await JS.InvokeVoidAsync("errorModal", "Instance not removed!", responseMessage);
+                await ErrorDialogService.ShowErrorDialog("Instance not removed!", responseMessage);
             }
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("errorModal", "Instance not removed!", ex.Message);
+            await ErrorDialogService.ShowErrorDialog("Instance not removed!", ex.Message);
+        }
+        finally
+        {
+            isVisible = false;
+            StateHasChanged();
         }
     }
-    
+
     private void NavigateToUrl(string url)
     {
         uriHelper.NavigateTo(url, true);
     }
-    
+
+    private bool IsDeploymentRunning(string deploymentStatus)
+    {
+        return deploymentStatus == "started";
+    }
+    private string DeploymentStatus(string deploymentStatus)
+    {
+        return deploymentStatus == "started" ? "Active" : "Inactive";
+    }
+    private bool LogRequestEnabled(dynamic flag)
+    {
+        return flag?.ToString()?.ToLower() == "true";
+    }
+    private string LogRequestTitle(dynamic flag)
+    {
+        return LogRequestEnabled(flag) ? "Logging Enabled" : "Logging Disabled";
+    }
+
+    private bool FilterFunc1(Deployment element) => FilterFunc(element, searchString1);
+    private bool FilterFunc(Deployment element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (element.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (element.Path.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (element.Team.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
+    }
+
     public class Deployment
     {
         public string? Name { get; set; }
@@ -675,7 +671,7 @@
     {
         public string? message { get; set; }
     }
-    
+
     public class AuthenticationForm
     {
         [Required(ErrorMessage = "Please enter {0}.")]
