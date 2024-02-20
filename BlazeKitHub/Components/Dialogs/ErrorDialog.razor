@@ -1,0 +1,26 @@
+﻿@inject IJSRuntime JS
+
+
+<MudMessageBox @ref="mbox" Title="Error" CancelText="Cancel">
+    <MessageContent>
+        @model.Message <br /> @model.Details
+    </MessageContent>
+    <YesButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error">OK</MudButton>
+    </YesButton>
+</MudMessageBox>
+
+
+@code {
+    MudMessageBox mbox { get; set; }
+    [Parameter] public Model model { get; set; }
+    private string errorDialogVersion { get; set; } = "v1";
+
+    public class Model
+    {
+        public int Code { get; set; }
+        public string? Message { get; set; }
+        public string? Details { get; set; }
+    }
+}
